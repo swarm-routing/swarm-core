@@ -1,0 +1,20 @@
+# org-sync configuration (swarm-routing/.github tools/org-sync).
+kind = "c-cpp"
+title = "swarm-core"
+dual = [""]
+
+[docs]
+arena_id = ""  # its id in swarm-routing.github.io site/hub/projects.json, once listed
+
+[settings]
+# GitHub settings as code: swarm-routing/.github tools/repo-settings (swarm-routing/.github#117).
+description = "swarm-core: the pure C++23 ports every swarm-routing protocol core builds on (IClock, ITransport, IRouteTable, IEnergyProvider, ILocationProvider, ILinkMetrics), the 4-byte common wire envelope and header-only protocol contract tests; no OS or simulator headers."
+homepage = ""  # none until the site lists it (swarm-routing/swarm-routing.github.io site/hub/projects.json)
+topics = ["cpp23", "swarm-intelligence", "routing-protocol", "ports-and-adapters", "hexagonal-architecture", "header-only", "manet", "library"]
+ruleset = "protocol"
+# Only checks that run on every PR today. Add the build and test checks (core, ns-3, ...)
+# once their workflows exist and run on pull_request and merge_group.
+required_checks = ["check / org-sync", "headers / licence", "title / title", "review / coderabbit"]
+# Merge through a merge queue (swarm-routing/.github#130); every workflow behind a required
+# check also runs on merge_group.
+merge_queue = true
