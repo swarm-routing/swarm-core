@@ -15,7 +15,7 @@ swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): t
 
 ```bash
 make help    # the org's standard target names: build, test, lint, format, check, clean, shell, ci
-make check   # everything CI gates on
+make check   # the local gates: lint, test, licence headers, org-sync (CI also checks the PR title and the review gate)
 ```
 
 ## Golden rules (invariants — do not break)
