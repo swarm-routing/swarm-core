@@ -25,11 +25,8 @@ from pathlib import Path
 
 MINIMUM = re.compile(r"^\s*set\(CMAKE_CXX_STANDARD_MINIMUM\s+(\d+)\s*\)", re.M)
 STANDARD = re.compile(r"^\s*set\(CMAKE_CXX_STANDARD\s+(\d+)\s*\)", re.M)
-# Only what a consumer inherits: swarm_core's PUBLIC or INTERFACE cxx_std_N (a
-# PRIVATE one, or one on another target, would not reach it; #36).
-FEATURE = re.compile(
-    r"\btarget_compile_features\(\s*swarm_core\s+(?:PUBLIC|INTERFACE)\s+cxx_std_(\d+)\b"
-)
+FEATURES = re.compile(r"\btarget_compile_features\(([^)]*)\)")
+FEATURE = re.compile(r"cxx_std_(\d+)")
 
 
 def uncommented(text: str) -> str:
@@ -52,7 +49,24 @@ def core_standards(cmakelists: Path) -> tuple[int, list[int]]:
         raise ValueError(
             f"{cmakelists}: expected one set(CMAKE_CXX_STANDARD N), found {len(found)}"
         )
-    return int(found[0]), [int(n) for n in FEATURE.findall(text)]
+    return int(found[0]), inherited_features(text)
+
+
+def inherited_features(text: str) -> list[int]:
+    """The cxx_std_N features swarm_core gives PUBLIC or INTERFACE, what a consumer
+    inherits; a PRIVATE one, or one on another target, does not reach it (#36)."""
+    out = []
+    for call in FEATURES.findall(text):
+        target, *args = call.split() or [""]
+        if target != "swarm_core":
+            continue
+        scope = None
+        for arg in args:
+            if arg in ("PUBLIC", "PRIVATE", "INTERFACE"):
+                scope = arg
+            elif scope in ("PUBLIC", "INTERFACE") and (m := FEATURE.fullmatch(arg)):
+                out.append(int(m.group(1)))
+    return out
 
 
 def problems(minimum: int, standard: int, features: list[int]) -> list[str]:
@@ -131,6 +145,27 @@ def self_test() -> int:
             "23",
             core("23", None) + "target_compile_features(\n  swarm_core\n  PUBLIC\n  cxx_std_23)\n",
             0,
+        ),
+        (
+            "a feature after another in its scope",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PUBLIC cxx_constexpr cxx_std_23)\n",
+            0,
+        ),
+        (
+            "a PUBLIC feature after a PRIVATE section",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PRIVATE cxx_std_20 PUBLIC cxx_std_23)\n",
+            0,
+        ),
+        (
+            "a PRIVATE feature after a PUBLIC section is not one",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PUBLIC cxx_constexpr PRIVATE cxx_std_23)\n",
+            1,
         ),
         ("ns-3 declares no minimum", None, core("23", "23"), 2),
         ("two standards in core/", "23", core("23", "23") + "set(CMAKE_CXX_STANDARD 20)\n", 2),
