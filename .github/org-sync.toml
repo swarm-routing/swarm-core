@@ -17,8 +17,4 @@ ruleset = "protocol"
 required_checks = ["check / org-sync", "headers / licence", "title / title", "review / coderabbit", "core", "cxx-standard", "api-surface"]
 # Merge through a merge queue (swarm-routing/.github#130); every workflow behind a required
 # check also runs on merge_group.
-# One-time merge commit for #32 (the history-preserving extraction of #6): the queue
-# merges with MERGE and merge commits are allowed. Needs merge_methods in
-# swarm-routing/.github's repo-settings; reverted to squash only right after #32 lands.
-merge_queue = { merge_method = "MERGE" }
-merge_methods = ["squash", "merge"]
+merge_queue = true
