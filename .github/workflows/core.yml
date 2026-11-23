@@ -1,0 +1,109 @@
+# Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+name: Core
+
+# core/ on its own (plain CMake + ctest, no ns-3 tree, C++23): the build every
+# protocol repository pins (swarm-routing/swarm-adapter-ns3#99, moved here by
+# #6): the strict warnings as errors (in core/CMakeLists.txt), the tests, the
+# same under ASan + UBSan, and core/ used as a library by another CMake project
+# (swarm-routing/swarm-adapter-ns3#100), as an installed package and as the
+# release tarball by URL (swarm-routing/swarm-adapter-ns3#133), plus clang-format
+# with the org .clang-format. Licence headers are licence.yml's
+# (`headers / licence`). The check name is `core`; no `paths:` filter, as a
+# required check runs on every PR (a docs-only change skips the steps inside).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:  # the merge queue runs the required checks on each group (swarm-routing/.github#130)
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels this run (swarm-routing/.github#505):
+# runners are shared by the whole org. Pushes, merge groups and dispatches run to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  core:
+    name: core
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@377fb5a73ca3c6864aee726a15eeef796270e5bc # main@2026-11-23
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.docs-only != 'true'
+        with:
+          persist-credentials: false
+      - name: clang-format-18 --dry-run -Werror (the org .clang-format)
+        if: steps.changes.outputs.docs-only != 'true'
+        timeout-minutes: 2
+        run: |
+          curl --proto =https --tlsv1.2 -fsSL --retry 3 -o "$RUNNER_TEMP/.clang-format" \
+            https://raw.githubusercontent.com/swarm-routing/.github/377fb5a73ca3c6864aee726a15eeef796270e5bc/.clang-format
+          git ls-files -z '*.h' '*.cc' '*.cpp' '*.hpp' |
+            xargs -0 -r clang-format-18 --style=file:"$RUNNER_TEMP/.clang-format" --dry-run -Werror
+      - name: Self-tests of the moved tools
+        if: steps.changes.outputs.docs-only != 'true'
+        run: |
+          python3 -I tools/checks/check-cxx-standard.py --self-test
+          python3 -I tools/bench/bench_compare.py --self-test
+      - name: Build and test (debug, strict warnings)
+        if: steps.changes.outputs.docs-only != 'true'
+        run: |
+          cmake -S core -B build/debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/debug -j "$(nproc)"
+          ctest --test-dir build/debug --output-on-failure
+      - name: Build and test (ASan + UBSan)
+        if: steps.changes.outputs.docs-only != 'true'
+        run: |
+          cmake -S core -B build/sanitized -DCMAKE_BUILD_TYPE=Debug -DSWARM_CORE_SANITIZE=ON
+          cmake --build build/sanitized -j "$(nproc)"
+          ctest --test-dir build/sanitized --output-on-failure
+      - name: core/ as a library in another CMake project, installed as a package, and by release tarball
+        if: steps.changes.outputs.docs-only != 'true'
+        run: tools/checks/check-core-consumer.sh build/consumer
+
+  # core/'s C++ standard against the minimum of the ns-3 release swarm-core
+  # supports, read from the ns3-dev image's tree (docs/api-policy.md "C++
+  # standard"; swarm-routing/swarm-adapter-ns3#141, the adapter's ci.yml job of
+  # the same name until #6). The self-test alone uses a synthetic minimum, so
+  # it cannot see the image raise its own.
+  cxx-standard:
+    name: cxx-standard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@377fb5a73ca3c6864aee726a15eeef796270e5bc # main@2026-11-23
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.docs-only != 'true'
+        with:
+          persist-credentials: false
+      - name: core/ against the ns3-dev image's ns-3
+        if: steps.changes.outputs.docs-only != 'true'
+        timeout-minutes: 10  # mostly the image pull
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src ghcr.io/swarm-routing/ns3-dev:latest-debug \
+            python3 -I tools/checks/check-cxx-standard.py --ns3 /opt/ns-3 core/CMakeLists.txt

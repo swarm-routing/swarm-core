@@ -1,0 +1,3 @@
+# build output (make build, cmake -B build/...)
+/build/
+__pycache__/
