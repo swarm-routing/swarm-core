@@ -110,8 +110,14 @@ public:
     /// - a row's `retain` outside [0, 1] or not finite leaves that row
     ///   unchanged; a row left empty is removed.
     ///
-    /// Neither callback may add or remove entries. Returns how many entries
-    /// were removed. evaporate(retain, floor) is unchanged by this overload.
+    /// Neither callback may add or remove entries. Both may read the table
+    /// (#34): nothing is removed or moved until every callback has returned,
+    /// so it is sorted, its size unchanged and every entry found; the entries
+    /// already visited hold their aged values (one due for removal included),
+    /// the others their old ones. If a callback throws, or the scratch (9
+    /// bytes per entry, kept between calls) cannot be allocated, the table is
+    /// left as it was (the strong guarantee). Returns how many entries were
+    /// removed. evaporate(retain, floor) is unchanged by this overload.
     template <class RetainFor, class Ages>
     std::size_t evaporate(RetainFor&& retainFor, double floor, Ages&& ages);
 
@@ -133,46 +139,68 @@ private:
     /// table is full; `fn(old)` gives the value from the old one (0 when
     /// absent). One lookup; refuses a non-finite result.
     template <class Fn> bool update(NodeAddress dest, NodeAddress neighbor, Fn fn);
+    /// The per-destination evaporate()'s halves that cannot throw (#34):
+    /// writes `saved` back over the first saved.size() values, in table
+    /// order; removes every entry whose flag in `due` (one per entry, in
+    /// table order) is set, and the rows left empty.
+    void restoreValues(std::span<const double> saved) noexcept;
+    void dropMarked(std::span<const unsigned char> due) noexcept;
 
     std::size_t capacity_;
     std::size_t size_ = 0;
     std::vector<Row> rows_;  // ascending by destination
+    // The per-destination evaporate()'s scratch, kept between calls.
+    std::vector<double> savedScratch_;
+    std::vector<unsigned char> dueScratch_;
 };
 
 template <class RetainFor, class Ages>
 std::size_t PheromoneTable::evaporate(RetainFor&& retainFor, double floor, Ages&& ages) {
-    // The single pass of evaporate(retain, floor), with the per-row factor
-    // and the two filters of AntHocNet's ageEntries.
-    std::size_t removed = 0;
-    std::size_t keptRows = 0;
-    for (std::size_t ri = 0; ri < rows_.size(); ++ri) {
-        const NodeAddress dest = rows_[ri].dest;
-        const double retain = retainFor(dest);
-        auto& entries = rows_[ri].entries;
-        const std::size_t n = entries.size();
-        std::size_t kept = 0;
-        if (retain >= 0.0 && retain <= 1.0) {  // also rejects NaN
-            for (std::size_t i = 0; i < n; ++i) {
-                double value = entries[i].value;
-                if (!(value <= 0.0) && ages(dest, entries[i].neighbor)) {
-                    value *= retain;
-                    if (value < floor) continue;
-                }
-                entries[kept].neighbor = entries[i].neighbor;
-                entries[kept].value = value;
-                ++kept;
-            }
-        } else {
-            kept = n;
+    // The pass of evaporate(retain, floor), with the per-row factor and the
+    // two filters of AntHocNet's ageEntries, in two halves (#34). The first
+    // calls the callbacks and ages values in place, saving each old value
+    // and marking the entries due for removal; nothing moves, so the table
+    // stays sorted for a callback that reads it. Should a callback throw,
+    // the guard writes the saved values back: the table is as it was. The
+    // second, dropMarked(), compacts and cannot throw; it runs only when an
+    // entry is due. The scratch is the table's, kept between calls so a
+    // steady pass does not allocate, and moved out while in use.
+    std::vector<double> saved = std::move(savedScratch_);
+    std::vector<unsigned char> due = std::move(dueScratch_);
+    saved.resize(size_);
+    due.resize(size_);
+    // Without try/catch, so a consumer built with -fno-exceptions compiles it.
+    struct Guard {
+        PheromoneTable& table;
+        std::vector<double>& saved;
+        std::vector<unsigned char>& due;
+        std::size_t done = 0;  // entries aged so far, in table order
+        bool finished = false;
+        ~Guard() {
+            if (!finished) table.restoreValues({saved.data(), done});
+            table.savedScratch_ = std::move(saved);
+            table.dueScratch_ = std::move(due);
         }
-        removed += n - kept;
-        entries.resize(kept);
-        if (kept == 0) continue;
-        if (keptRows != ri) rows_[keptRows] = std::move(rows_[ri]);
-        ++keptRows;
+    } guard{*this, saved, due};
+    std::size_t removed = 0;
+    for (Row& r : rows_) {
+        const double retain = retainFor(r.dest);
+        const bool valid = retain >= 0.0 && retain <= 1.0;  // also rejects NaN
+        for (Entry& e : r.entries) {
+            const double value = e.value;
+            bool gone = false;
+            if (valid && !(value <= 0.0) && ages(r.dest, e.neighbor)) {
+                e.value = value * retain;
+                gone = e.value < floor;
+            }
+            saved[guard.done] = value;
+            due[guard.done] = gone;
+            ++guard.done;
+            removed += gone;
+        }
     }
-    rows_.resize(keptRows);
-    size_ -= removed;
+    guard.finished = true;
+    if (removed > 0) dropMarked(due);
     return removed;
 }
 

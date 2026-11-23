@@ -516,6 +516,93 @@ void TestPerDestinationEvaporation(Checker& c) {
     c.check(ra == rb && flatten(a) == flatten(b), "one retain, everything ageing: evaporate()");
 }
 
+void TestPerDestinationEvaporationCallbacks(Checker& c) {
+    // #34: a callback that throws leaves the table as it was before the call
+    // (the strong guarantee), and one that reads the table sees it as it was
+    // before the call: sorted, consistent, nothing compacted yet.
+    struct Thrown {};
+    const auto fill = [](PheromoneTable& t) {
+        for (NodeAddress d = 1; d <= 5; ++d)
+            t.set(d, 10, 0.1);  // retain 0.5, floor 0.25: dests 1 and 2 empty
+        t.set(1, 11, 1.0);      // dest 1 keeps a row in the ages() case
+        t.set(1, 12, 1.0);
+    };
+    const auto halve = [](NodeAddress) { return 0.5; };
+    const auto always = [](NodeAddress, NodeAddress) { return true; };
+
+    // ages() throws on neighbour 12, after neighbour 10 of the same row went.
+    PheromoneTable a(16);
+    fill(a);
+    const auto beforeA = flatten(a);
+    bool threw = false;
+    try {
+        a.evaporate(halve, 0.25, [](NodeAddress d, NodeAddress n) {
+            if (d == 1 && n == 12) throw Thrown{};
+            return true;
+        });
+    } catch (const Thrown&) {
+        threw = true;
+    }
+    c.check(threw && flatten(a) == beforeA && a.size() == beforeA.size(),
+            "ages() throwing mid-row leaves the table as it was");
+
+    // retainFor(4) throws after destinations 1..3 were aged and 2, 3 emptied.
+    PheromoneTable b(16);
+    fill(b);
+    b.erase(1, 11);
+    b.erase(1, 12);
+    const auto beforeB = flatten(b);
+    threw = false;
+    try {
+        b.evaporate(
+            [](NodeAddress d) {
+                if (d == 4) throw Thrown{};
+                return 0.5;
+            },
+            0.25, always);
+    } catch (const Thrown&) {
+        threw = true;
+    }
+    c.check(threw && flatten(b) == beforeB && b.size() == beforeB.size() &&
+                b.destinations() == std::vector<NodeAddress>{1, 2, 3, 4, 5},
+            "retainFor() throwing after emptied rows leaves the table as it was");
+    // The table still works: the same pass without the throw.
+    c.check(b.evaporate(halve, 0.25, always) == 5 && b.empty(), "usable after the throw");
+
+    // A read inside a callback sees a sorted table of unchanged size, every
+    // entry in place and found, though rows 1 and 2 are already due for
+    // removal; rows visited hold their aged values, the others their old ones.
+    PheromoneTable r(16);
+    fill(r);
+    r.erase(1, 11);
+    r.erase(1, 12);
+    r.set(3, 11, 1.0);
+    bool consistent = true;
+    const auto intact = [&r] {
+        const auto dests = r.destinations();
+        return std::is_sorted(dests.begin(), dests.end()) &&
+               dests == std::vector<NodeAddress>{1, 2, 3, 4, 5} && r.size() == 6 &&
+               r.row(3).size() == 2;
+    };
+    r.evaporate(
+        [&r, &consistent, &intact](NodeAddress d) {
+            bool values = true;
+            for (NodeAddress x = 1; x <= 5; ++x)
+                values = values && r.get(x, 10) == (x < d ? 0.05 : 0.1);
+            consistent = consistent && intact() && values && r.contains(d, 10);
+            return 0.5;
+        },
+        0.25,
+        [&r, &consistent, &intact](NodeAddress d, NodeAddress n) {
+            consistent = consistent && intact() && r.contains(d, n);
+            return true;
+        });
+    c.check(consistent, "callbacks read a sorted table, nothing removed or moved yet");
+    c.check(r.destinations() == std::vector<NodeAddress>{3} && r.row(3).size() == 1 &&
+                r.get(3, 11) == 0.5 && r.size() == 1,
+            "and the pass still ages and compacts");
+}
+
 namespace {
 
 /// AntHocNet's ageing, written as it is there (PheromoneTable::ageEntries in

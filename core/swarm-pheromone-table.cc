@@ -193,4 +193,40 @@ std::size_t PheromoneTable::evaporate(double retain, double floor) {
     return removed;
 }
 
+void PheromoneTable::restoreValues(std::span<const double> saved) noexcept {
+    std::size_t k = 0;
+    for (Row& r : rows_) {
+        for (Entry& e : r.entries) {
+            if (k == saved.size()) return;
+            e.value = saved[k++];
+        }
+    }
+}
+
+void PheromoneTable::dropMarked(std::span<const unsigned char> due) noexcept {
+    // The compaction of evaporate(retain, floor): shrinking resizes and moves
+    // of a vector, none of which throws.
+    std::size_t removed = 0;
+    std::size_t keptRows = 0;
+    const unsigned char* gone = due.data();
+    for (std::size_t ri = 0; ri < rows_.size(); ++ri) {
+        auto& entries = rows_[ri].entries;
+        const std::size_t n = entries.size();
+        std::size_t kept = 0;
+        for (std::size_t i = 0; i < n; ++i) {
+            if (gone[i]) continue;
+            if (kept != i) entries[kept] = entries[i];
+            ++kept;
+        }
+        gone += n;
+        removed += n - kept;
+        entries.resize(kept);
+        if (kept == 0) continue;
+        if (keptRows != ri) rows_[keptRows] = std::move(rows_[ri]);
+        ++keptRows;
+    }
+    rows_.resize(keptRows);
+    size_ -= removed;
+}
+
 }  // namespace swarm::core
