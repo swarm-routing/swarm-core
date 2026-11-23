@@ -10,9 +10,10 @@ The rule (docs/api-policy.md "C++ standard", #141): core/ targets the standard
 ns-3 itself requires, its CMAKE_CXX_STANDARD_MINIMUM in
 build-support/macros-and-definitions.cmake (C++23 from ns-3.46). This reads
 that minimum from an ns-3 tree (in CI, the ns3-dev image's /opt/ns-3) and
-fails when core/CMakeLists.txt's `set(CMAKE_CXX_STANDARD N)`, or any
-`cxx_std_N` compile feature it gives its target (what a consumer inherits), is
-below it, or when the two disagree. A standard above ns-3's minimum passes:
+fails when core/CMakeLists.txt's `set(CMAKE_CXX_STANDARD N)`, or the
+`cxx_std_N` compile feature it gives swarm_core PUBLIC or INTERFACE (what a
+consumer inherits; a PRIVATE one counts for nothing), is missing or below it,
+or when the two disagree. A standard above ns-3's minimum passes:
 the rule is a floor, so swarm-core may move first. Exit 0 when it holds, 1
 when it does not, 2 on a file it cannot read.
 """
@@ -24,7 +25,8 @@ from pathlib import Path
 
 MINIMUM = re.compile(r"^\s*set\(CMAKE_CXX_STANDARD_MINIMUM\s+(\d+)\s*\)", re.M)
 STANDARD = re.compile(r"^\s*set\(CMAKE_CXX_STANDARD\s+(\d+)\s*\)", re.M)
-FEATURE = re.compile(r"\bcxx_std_(\d+)\b")
+FEATURES = re.compile(r"\btarget_compile_features\(([^)]*)\)")
+FEATURE = re.compile(r"cxx_std_(\d+)")
 
 
 def uncommented(text: str) -> str:
@@ -47,7 +49,24 @@ def core_standards(cmakelists: Path) -> tuple[int, list[int]]:
         raise ValueError(
             f"{cmakelists}: expected one set(CMAKE_CXX_STANDARD N), found {len(found)}"
         )
-    return int(found[0]), [int(n) for n in FEATURE.findall(text)]
+    return int(found[0]), inherited_features(text)
+
+
+def inherited_features(text: str) -> list[int]:
+    """The cxx_std_N features swarm_core gives PUBLIC or INTERFACE, what a consumer
+    inherits; a PRIVATE one, or one on another target, does not reach it (#36)."""
+    out = []
+    for call in FEATURES.findall(text):
+        target, *args = call.split() or [""]
+        if target != "swarm_core":
+            continue
+        scope = None
+        for arg in args:
+            if arg in ("PUBLIC", "PRIVATE", "INTERFACE"):
+                scope = arg
+            elif scope in ("PUBLIC", "INTERFACE") and (m := FEATURE.fullmatch(arg)):
+                out.append(int(m.group(1)))
+    return out
 
 
 def problems(minimum: int, standard: int, features: list[int]) -> list[str]:
@@ -55,7 +74,10 @@ def problems(minimum: int, standard: int, features: list[int]) -> list[str]:
     if standard < minimum:
         out.append(f"CMAKE_CXX_STANDARD {standard} is below ns-3's minimum C++{minimum}")
     if not features:
-        out.append("no cxx_std_N compile feature: a consumer would not inherit the standard")
+        out.append(
+            "no PUBLIC or INTERFACE cxx_std_N compile feature on swarm_core: "
+            "a consumer would not inherit the standard"
+        )
     for n in features:
         if n != standard:
             out.append(f"cxx_std_{n} differs from CMAKE_CXX_STANDARD {standard}")
@@ -95,10 +117,12 @@ def self_test() -> int:
         cm.write_text(core)
         return ns3, cm
 
-    def core(std: str, feature: str | None) -> str:
+    def core(
+        std: str, feature: str | None, scope: str = "PUBLIC", target: str = "swarm_core"
+    ) -> str:
         text = f"project(x)\nset(CMAKE_CXX_STANDARD {std})\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\n"
         if feature is not None:
-            text += f"target_compile_features(swarm_core PUBLIC cxx_std_{feature})\n"
+            text += f"target_compile_features({target} {scope} cxx_std_{feature})\n"
         return text
 
     cases = [
@@ -107,6 +131,42 @@ def self_test() -> int:
         ("below the minimum", "23", core("20", "20"), 1),
         ("feature below the standard", "23", core("23", "20"), 1),
         ("no feature", "23", core("23", None), 1),
+        ("an INTERFACE feature is inherited", "23", core("23", "23", "INTERFACE"), 0),
+        ("a PRIVATE feature is not inherited", "23", core("23", "23", "PRIVATE"), 1),
+        ("a feature on another target", "23", core("23", "23", target="swarm_core_test"), 1),
+        (
+            "a PRIVATE feature on another target is not one",
+            "23",
+            core("23", "23") + "target_compile_features(swarm_core_test PRIVATE cxx_std_20)\n",
+            0,
+        ),
+        (
+            "a feature over several lines",
+            "23",
+            core("23", None) + "target_compile_features(\n  swarm_core\n  PUBLIC\n  cxx_std_23)\n",
+            0,
+        ),
+        (
+            "a feature after another in its scope",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PUBLIC cxx_constexpr cxx_std_23)\n",
+            0,
+        ),
+        (
+            "a PUBLIC feature after a PRIVATE section",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PRIVATE cxx_std_20 PUBLIC cxx_std_23)\n",
+            0,
+        ),
+        (
+            "a PRIVATE feature after a PUBLIC section is not one",
+            "23",
+            core("23", None)
+            + "target_compile_features(swarm_core PUBLIC cxx_constexpr PRIVATE cxx_std_23)\n",
+            1,
+        ),
         ("ns-3 declares no minimum", None, core("23", "23"), 2),
         ("two standards in core/", "23", core("23", "23") + "set(CMAKE_CXX_STANDARD 20)\n", 2),
         ("a feature in a comment is not one", "23", "# cxx_std_20\n" + core("23", "23"), 0),
