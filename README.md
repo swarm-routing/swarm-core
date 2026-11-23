@@ -13,7 +13,7 @@
 
 swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): the pure C++23 ports (`IClock`, `ITransport`, `IRouteTable`, `IEnergyProvider`, `ILocationProvider`, `ILinkMetrics`), the 4-byte common wire envelope (`magic`, `protocol_id`, `version`, `flags`) and the header-only `ProtocolContractTest` suite. No OS or simulator header. It will be extracted with its history from swarm-routing/swarm-adapter-ns3's `core/`.
 
-**Status: planned.** Nothing is built yet; the plan is #3 and swarm-routing/.github#672.
+**Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release pending (#10).** The plan is #3 and swarm-routing/.github#672. `core/` builds, tests and installs alone: `cmake -S core -B build/core && cmake --build build/core && ctest --test-dir build/core` (`make test`); consumers add it with `FetchContent` `SOURCE_SUBDIR core` or `find_package(swarm-core CONFIG)` (target `swarm::core`).
 
 <!-- org-sync:begin develop -->
 ## Develop

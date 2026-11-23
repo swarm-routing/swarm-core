@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT OR GPL-2.0-only
 #
 # The simulator-free primitives on their own: a static library and its tests,
-# with no ns-3 tree. The ns-3 module (../CMakeLists.txt) compiles the same
-# sources into libswarm-core and runs the same tests under test.py.
+# with no ns-3 tree. The ns-3 adapter (swarm-routing/swarm-adapter-ns3) builds
+# on it; this repository has no root CMakeLists.txt (#6).
 #
 #   cmake -S core -B build/core && cmake --build build/core && ctest --test-dir build/core
 #

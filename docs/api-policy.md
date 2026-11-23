@@ -8,6 +8,15 @@ an API is retired. It is the written policy the v1.0.0 row of the
 [roadmap](roadmap.md) asked for. The 0.x rules at the end are kept as the
 record of what held before.
 
+> **Moved here from swarm-routing/swarm-adapter-ns3 (#6).** This page came with
+> `core/` and its history. Bare `#N` references below are
+> swarm-routing/swarm-adapter-ns3's issues, and links to `roadmap.md` and
+> `AGENTS.md` mean that repository's. In this repository the API is the
+> `core/` rows (the headers, `core/testbench/`, `core/` as a CMake project) and
+> `docs/api-surface.txt` holds their `core` lines alone, unchanged from
+> v1.0.0; the `model/`, `helper/` and module rows describe the ns-3 adapter,
+> which stays in swarm-routing/swarm-adapter-ns3.
+
 The consumers today are the protocol repositories that build on swarm-core
 (swarm-routing/ARA, swarm-routing/BeeAdHoc, swarm-routing/Termite,
 swarm-routing/HOPNET; swarm-routing/AntHocNet once #14 lands) and

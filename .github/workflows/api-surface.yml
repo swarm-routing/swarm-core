@@ -1,14 +1,15 @@
 # Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 name: API surface
 
 # The public API as a committed, generated record (docs/api-surface.txt) and
 # its guard (tools/checks/check-api-surface.py; docs/api-policy.md "The API
 # record"): the record must match the sources, and a PR that removes or
 # changes a listed item must be marked breaking (`!` in its title or a
-# `BREAKING CHANGE:` footer). Strict from the v1.0.0 freeze (#83): a finding
-# fails the job, and `api-surface` is a required check ([settings]
-# required_checks in .github/org-sync.toml).
+# `BREAKING CHANGE:` footer). Strict from the v1.0.0 freeze
+# (swarm-routing/swarm-adapter-ns3#83): a finding fails the job, and
+# `api-surface` is a required check ([settings] required_checks in
+# .github/org-sync.toml). Here the record is core/'s part alone, no ns-3 (#6).
 # The check name is `api-surface`; no `paths:` filter, so it can become a
 # required check without an edit.
 on:
@@ -68,10 +69,6 @@ jobs:
             sleep $((i * 15))
           done
           "clang++-$v" --version
-      - name: Pull the ns-3 image
-        if: steps.changes.outputs.docs-only != 'true'
-        timeout-minutes: 5
-        run: docker pull --quiet ghcr.io/swarm-routing/ns3-dev:latest-debug
       - name: Check the record
         if: steps.changes.outputs.docs-only != 'true'
         env:
@@ -86,5 +83,4 @@ jobs:
           fi
           printf '%s\n' "$BODY" > "$RUNNER_TEMP/pr-body.md"
           python3 -I tools/checks/check-api-surface.py check \
-            --ns3-image ghcr.io/swarm-routing/ns3-dev:latest-debug \
             --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md" --strict "${args[@]}"

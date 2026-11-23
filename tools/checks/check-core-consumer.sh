@@ -53,7 +53,7 @@ grep -Eq '(^|[ /])swarm_core( |$)' <<<"$targets" || fail "the consumer's build h
 
 listed=$(ctest --test-dir "$build" -N)
 # A test entry named swarm-core, not the name anywhere (the first line of the
-# listing is the build directory, which in CI is under .../ns3-swarm-core/).
+# listing is the build directory, which in CI is under .../swarm-core/).
 grep -Eq '^ *Test +#[0-9]+: swarm-core$' <<<"$listed" && fail "the consumer's ctest lists swarm-core's suite"
 grep -q 'Total Tests: 1$' <<<"$listed" || fail "the consumer's ctest should list its one test: $listed"
 

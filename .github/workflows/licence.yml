@@ -18,5 +18,8 @@ jobs:
   headers:
     uses: swarm-routing/.github/.github/workflows/reusable-licence-check.yml@377fb5a73ca3c6864aee726a15eeef796270e5bc # main@2026-11-23
     with:
-      dual-roots: ''
-      core-roots: ''
+      dual-roots: 'core/ tools/'
+      core-roots: 'core/'
+      # The dev-only microbenchmarks include <benchmark/benchmark.h>, outside
+      # the standard library: they are never shipped (as in swarm-adapter-ns3).
+      exclude: '^core/bench/'

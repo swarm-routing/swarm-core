@@ -18,17 +18,20 @@ BUILD_ARGS ?=
 help: ## list the targets
 	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z0-9_-]+:.*## /{printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+# core/ is the CMake project (top level there, so its tests and -Werror are on;
+# consumers add it with SOURCE_SUBDIR core); there is no root CMakeLists.txt.
 build: ## build what this repo ships
-	if [ -f CMakeLists.txt ]; then cmake -S . -B build && cmake --build build -j; else echo "make build: no CMakeLists.txt yet"; fi
+	cmake -S core -B build/core && cmake --build build/core -j
 
 test: ## the fast tests CI runs on every PR
-	if [ -f CMakeLists.txt ]; then cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output-on-failure; else echo "make test: no CMakeLists.txt yet"; fi
+	cmake -S core -B build/core && cmake --build build/core -j && ctest --test-dir build/core --output-on-failure
 
-lint: ## static checks, no changes
-	git ls-files "*.h" "*.cc" "*.cpp" "*.hpp" | xargs -r clang-format --dry-run --Werror
+# The org .clang-format (this repo ships none, as reusable-ns3-ci.yml falls back to it).
+lint: org-tools ## static checks, no changes
+	git ls-files "*.h" "*.cc" "*.cpp" "*.hpp" | xargs -r clang-format --style=file:"$(ORG_DIR)/.clang-format" --dry-run --Werror
 
-format: ## apply the formatters
-	git ls-files "*.h" "*.cc" "*.cpp" "*.hpp" | xargs -r clang-format -i
+format: org-tools ## apply the formatters
+	git ls-files "*.h" "*.cc" "*.cpp" "*.hpp" | xargs -r clang-format --style=file:"$(ORG_DIR)/.clang-format" -i
 
 clean: ## remove build outputs
 	rm -rf build
@@ -38,7 +41,7 @@ shell: ## an interactive shell in the dev image with this repo at /src
 	docker run --rm -it -v "$(CURDIR):/src" -w /src $(if $(PLATFORM),--platform $(PLATFORM)) $(NS3_IMAGE) bash
 
 headers: org-tools ## licence headers (org rule 1): the Go gate CI runs, in docker or built with go
-	"$(ORG_DIR)/tools/checks/check-headers.sh" --dual '' --core core/ .
+	"$(ORG_DIR)/tools/checks/check-headers.sh" --dual '' --core core/ --exclude '^core/bench/' .
 
 check: lint test headers org-sync-check ## everything CI gates on
 

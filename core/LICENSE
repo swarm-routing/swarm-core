@@ -5,13 +5,12 @@ The swarm-core primitives (this directory, core/) are dual-licensed:
 You may use, copy, modify and distribute them under the terms of EITHER the MIT
 License below OR the GNU General Public License version 2 only, at your choice.
 The GPL-2.0 text is the LICENSE file at the root of this repository
-(https://github.com/swarm-routing/ns3-swarm-core/blob/main/LICENSE).
+(https://github.com/swarm-routing/swarm-core/blob/main/LICENSE).
 
 core/ includes only the C++ standard library and other core/ files, never a
 simulator header, so it can be used on its own: in another simulator, a routing
-daemon, firmware or a closed product. Outside core/, only tools/ shares this
-dual licence; the rest of the repository (the ns-3 module's model/, helper/,
-test/, examples/, docs) is GPL-2.0-only. See LICENSING.md.
+daemon, firmware or a closed product. The whole repository shares this dual
+licence. See LICENSING.md.
 
 Much of core/ is derived from AntHocNet's dual-licensed algorithm core
 (swarm-routing/AntHocNet core/, MIT OR GPL-2.0-only, its ADR-0028); each file

@@ -3,9 +3,15 @@
 # SPDX-License-Identifier: MIT OR GPL-2.0-only
 """The public API of swarm-core as a committed, generated record, and its guard.
 
-    check-api-surface.py generate (--ns3-image IMAGE | --ns3-include DIR) [-o docs/api-surface.txt]
-    check-api-surface.py check (--ns3-image IMAGE | --ns3-include DIR) [--base-snapshot FILE]
+    check-api-surface.py generate [--ns3-image IMAGE | --ns3-include DIR] [-o docs/api-surface.txt]
+    check-api-surface.py check [--ns3-image IMAGE | --ns3-include DIR] [--base-snapshot FILE]
                                [--title TITLE] [--body-file FILE] [--strict]
+
+In swarm-routing/swarm-core (#6) there is no ns-3 module: with neither
+`--ns3-image` nor `--ns3-include`, and no root `CMakeLists.txt` with
+`build_lib`, the record is the `core` part alone. The ns-3 parts below stay
+for a repository that has the module (swarm-routing/swarm-adapter-ns3, where
+this script came from) and for the self-test.
     check-api-surface.py --self-test
     check-api-surface.py --clang-version
 
@@ -672,6 +678,8 @@ def unquote(s: str) -> str:
 
 def typeid_surface(repo: Path) -> set[str]:
     out: set[str] = set()
+    if not (repo / "CMakeLists.txt").exists():
+        return out  # core/ alone: no ns-3 module, no TypeId
     files = module_files(repo, "SOURCE_FILES", ".cc") + module_files(repo, "HEADER_FILES", ".h")
     start = re.compile(r'\bTypeId\s*\(\s*"(ns3::[\w:]+)"\s*\)')
     for f in files:
@@ -766,8 +774,8 @@ def findings(generated: str, committed: str, base: str | None, title: str, body:
             )
         )
         found.append(
-            f"{SNAPSHOT} is stale: run `tools/checks/check-api-surface.py generate --ns3-image "
-            f"ghcr.io/swarm-routing/ns3-dev:latest-debug` and commit it.\n{diff}"
+            f"{SNAPSHOT} is stale: run `tools/checks/check-api-surface.py generate` "
+            f"and commit it.\n{diff}"
         )
     if base is not None:
         gone = sorted(
@@ -817,7 +825,7 @@ def main(argv: list[str]) -> int:
         return 0
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("mode", choices=["generate", "check"])
-    src = ap.add_mutually_exclusive_group(required=True)
+    src = ap.add_mutually_exclusive_group()  # neither: core/ alone (#6)
     src.add_argument("--ns3-image")
     src.add_argument("--ns3-include", type=Path)
     ap.add_argument("-o", "--output", type=Path, default=REPO / SNAPSHOT)
@@ -834,6 +842,8 @@ def main(argv: list[str]) -> int:
                 args.ns3_include.resolve()
                 if args.ns3_include
                 else ns3_include_from_image(args.ns3_image, work)
+                if args.ns3_image
+                else None
             )
             text = generate(args.repo.resolve(), include, work)
     except (SurfaceError, OSError, subprocess.CalledProcessError) as e:
