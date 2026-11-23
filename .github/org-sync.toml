@@ -2,6 +2,12 @@
 kind = "c-cpp"
 title = "swarm-core"
 dual = [""]
+# its port in swarm-routing/vcpkg-registry: the README's vcpkg badge (swarm-routing/.github#436);
+# moved here from swarm-routing/swarm-adapter-ns3 with the releases (#10)
+vcpkg_ports = ["swarm-core"]
+# CITATION.cff seed and cite badge. The first release creates the Zenodo concept; org-bot's
+# zenodo task then sets zenodo_concept (read from Zenodo) and CITATION.cff's doi (#10).
+citation = true
 
 [docs]
 arena_id = ""  # its id in swarm-routing.github.io site/hub/projects.json, once listed

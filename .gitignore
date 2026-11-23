@@ -1,3 +1,5 @@
 # build output (make build, cmake -B build/...)
 /build/
 __pycache__/
+# the release asset (make dist)
+/dist/

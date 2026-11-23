@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Releases go through swarm-routing/.github's reusable-release.yml
+# (.github/workflows/release.yml; CONTRIBUTING "Cutting a release" there).
+# swarm-core's line continues from swarm-routing/swarm-adapter-ns3, which
+# released v0.1.0 to v1.0.0 (#6, #10): `version` is that last release, and the
+# first release here is bumped from it (`first-release-from-config`, MAJOR:
+# 2.0.0, maintainer decision on #10). Commitizen then bumps from the
+# Conventional Commits since the last tag and rewrites the files below.
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "1.0.0"
+version_scheme = "semver"
+tag_format = "v$version"
+# a breaking change (`!`, BREAKING CHANGE:) bumps the major (docs/api-policy.md)
+major_version_zero = false
+update_changelog_on_bump = true
+version_files = ["VERSION", "CITATION.cff:^version:"]
+# The changelog starts after the imported v1.0.0 bump commit (swarm-adapter-ns3
+# #188, 46f3f6e here): earlier versions are in swarm-adapter-ns3's CHANGELOG.md.
+# Without it the first section would repeat the whole 0.1.0 to 1.0.0 history.
+changelog_start_rev = "46f3f6e6af2a874e11a63a23cb09d731eff3ca06"
