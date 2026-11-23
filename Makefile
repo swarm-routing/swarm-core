@@ -75,3 +75,7 @@ doctor: ## this machine's tools against the versions CI runs (the org's tools/ve
 	@$(MAKE) -s org-tools || echo "doctor: could not refresh $(ORG_DIR) (offline?): using it as it is" >&2
 	@"$(ORG_DIR)/tools/doctor/doctor.sh" .
 # org-sync:end org-tools
+
+.PHONY: dist
+dist: ## the release asset swarm-core-<ver>.tar.gz into dist/, checked (DIST_CHECK=0 skips the check); release.yml's build
+	tools/release/dist.sh "$${RELEASE_VERSION:-$$(cat VERSION)}" dist
