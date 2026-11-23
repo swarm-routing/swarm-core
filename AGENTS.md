@@ -7,7 +7,7 @@ before changing anything. Org-wide conventions:
 
 ## What this repo is
 
-**Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release pending (#10).** The plan is #3 (swarm-routing/.github#672). `core/` is the CMake project (`make build`/`make test` run `cmake -S core`); checks: `core` (`.github/workflows/core.yml`: build, ctest, ASan + UBSan, clang-format, `tools/checks/check-core-consumer.sh`) and `api-surface` (`docs/api-surface.txt`, `core` lines only). Bare `#N` in imported commits and in `core/`/`tools/` comments name swarm-routing/swarm-adapter-ns3's issues.
+**Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release pending (#10).** The plan is #3 (swarm-routing/.github#672). `core/` is the CMake project (`make build`/`make test` run `cmake -S core`); checks: `core` (`.github/workflows/core.yml`: build, ctest, ASan + UBSan, clang-format, `tools/checks/check-core-consumer.sh`), `cxx-standard` (`core.yml`: `core/`'s standard against the `ns3-dev` image's ns-3 minimum) and `api-surface` (`docs/api-surface.txt`, `core` lines only). Bare `#N` in imported commits and in `core/`/`tools/` comments name swarm-routing/swarm-adapter-ns3's issues.
 
 swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): the pure C++23 ports (`IClock`, `ITransport`, `IRouteTable`, `IEnergyProvider`, `ILocationProvider`, `ILinkMetrics`), the 4-byte common wire envelope (`magic`, `protocol_id`, `version`, `flags`) and the header-only `ProtocolContractTest` suite. No OS or simulator header. It will be extracted with its history from swarm-routing/swarm-adapter-ns3's `core/`.
 

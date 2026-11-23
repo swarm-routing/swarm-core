@@ -75,3 +75,35 @@ jobs:
       - name: core/ as a library in another CMake project, installed as a package, and by release tarball
         if: steps.changes.outputs.docs-only != 'true'
         run: tools/checks/check-core-consumer.sh build/consumer
+
+  # core/'s C++ standard against the minimum of the ns-3 release swarm-core
+  # supports, read from the ns3-dev image's tree (docs/api-policy.md "C++
+  # standard"; swarm-routing/swarm-adapter-ns3#141, the adapter's ci.yml job of
+  # the same name until #6). The self-test alone uses a synthetic minimum, so
+  # it cannot see the image raise its own.
+  cxx-standard:
+    name: cxx-standard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@377fb5a73ca3c6864aee726a15eeef796270e5bc # main@2026-11-23
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.docs-only != 'true'
+        with:
+          persist-credentials: false
+      - name: core/ against the ns3-dev image's ns-3
+        if: steps.changes.outputs.docs-only != 'true'
+        timeout-minutes: 10  # mostly the image pull
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src ghcr.io/swarm-routing/ns3-dev:latest-debug \
+            python3 -I tools/checks/check-cxx-standard.py --ns3 /opt/ns-3 core/CMakeLists.txt

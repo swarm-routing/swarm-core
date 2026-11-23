@@ -137,7 +137,7 @@ When ns-3 raises its minimum, swarm-core follows in a **minor** release: the
 standard is not part of the source API above (no name or signature changes),
 but a consumer may need a newer compiler, so the PR opens an issue in each
 consumer listed above before it merges and the release notes say so. The
-`cxx-standard` job of `ci.yml` (`tools/checks/check-cxx-standard.py`) fails
+`cxx-standard` job of `core.yml` (`tools/checks/check-cxx-standard.py`) fails
 when `core/` is below the minimum of the `ns3-dev` image CI builds in, so the
 move is never missed.
 
