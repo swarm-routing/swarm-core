@@ -55,7 +55,7 @@ image, `/opt/ns-3/build/include`).
     changed. That is a breaking change (api-policy "Versions"), allowed only
     when the PR says so: a `!` before the colon of its Conventional Commit
     title (`feat!: ...`, `fix(core)!: ...`) or a `BREAKING CHANGE:` footer in
-    its body.
+    its body (outside a fenced code block, where it is only an example).
 
 Report-only until the v1.0.0 freeze: without `--strict` it prints each
 finding as a GitHub warning and exits 0; with `--strict` it exits 1 on any
@@ -252,8 +252,33 @@ def written(node: dict, src: bytes) -> str:
     if src and "offset" in b and "offset" in e and "tokLen" in e:
         start, end = b["offset"], e["offset"] + e["tokLen"]
         if 0 <= start < end <= len(src):
-            return " ".join(strip_comments(src[start:end].decode(errors="replace")).split())
+            return collapse_space(strip_comments(src[start:end].decode(errors="replace")))
     return expr(node)
+
+
+def collapse_space(text: str) -> str:
+    """Runs of whitespace as one space, outside string and character literals
+    (`"a  b"` and `"a b"` are two values; swarm-routing/swarm-core#35), ends trimmed."""
+    return "".join(
+        part if part[:1] in "\"'" else re.sub(r"\s+", " ", part) for part in literal_split(text)
+    ).strip()
+
+
+def literal_split(text: str) -> list[str]:
+    """TEXT cut into string and character literals and the code between them."""
+    parts, i, n, last = [], 0, len(text), 0
+    while i < n:
+        c = text[i]
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == "\\" else 1
+            parts += [text[last:i], text[i : j + 1]]
+            i = last = j + 1
+        else:
+            i += 1
+    parts.append(text[last:])
+    return [p for p in parts if p]
 
 
 def expr(node: dict) -> str:
@@ -355,11 +380,19 @@ def specifiers(node: dict, src: bytes) -> str:
     return src[begin:name].decode(errors="replace")
 
 
+def is_final(node: dict) -> bool:
+    """`final` on a class or a method: a consumer can no longer derive or override
+    (swarm-routing/swarm-core#35)."""
+    return any(c.get("kind") == "FinalAttr" for c in node.get("inner", []))
+
+
 def function_line(area: str, qname: str, node: dict, access: str, tmpl: str, src: bytes) -> str:
     flags = [access] if access else []
     for key, word in (("virtual", "virtual"), ("constexpr", "constexpr")):
         if node.get(key):
             flags.append(word)
+    if is_final(node):
+        flags.append("final")
     if re.search(r"\bexplicit\b", specifiers(node, src)):
         flags.append("explicit")
     if node.get("storageClass") == "static":
@@ -453,6 +486,8 @@ def walk(
                 if b.get("access", "public") != "private"
             ]
             line = f"{here} {rec_tmpl}{tag} {qname}"
+            if is_final(node):
+                line += " final"
             if shown:
                 line += f" ({shown})"
             if bases:
@@ -757,8 +792,33 @@ def items(text: str) -> list[str]:
     return [line for line in text.splitlines() if line and not line.startswith("#")]
 
 
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+
+
+def outside_fences(body: str) -> str:
+    """BODY without its fenced code blocks (``` or ~~~, closed by a fence of the
+    same character at least as long, or by the end of the body; CommonMark), so
+    a footer quoted as an example does not count (swarm-routing/swarm-core#35)."""
+    out, fence = [], ""
+    for line in body.splitlines():
+        m = FENCE.match(line)
+        if not fence:
+            if m:
+                fence = m.group(1)
+            else:
+                out.append(line)
+        elif (
+            m
+            and m.group(1)[0] == fence[0]
+            and len(m.group(1)) >= len(fence)
+            and not line[m.end() :].strip()
+        ):
+            fence = ""
+    return "\n".join(out)
+
+
 def is_breaking(title: str, body: str) -> bool:
-    return bool(BREAKING_TITLE.match(title.strip()) or BREAKING_FOOTER.search(body))
+    return bool(BREAKING_TITLE.match(title.strip()) or BREAKING_FOOTER.search(outside_fences(body)))
 
 
 def findings(generated: str, committed: str, base: str | None, title: str, body: str) -> list[str]:
@@ -893,6 +953,9 @@ struct FuzzyThing { int x; };
 struct Derived : Base { public: using Base::run; };
 template <typename T> T twice(T x) { return x + x; }
 int free_fn(int a, int b = kWireVersion);
+int spaced(const char* s = "a  b", char c = ' ');
+struct Step { virtual ~Step(); virtual void step(); };
+struct Sealed final : Step { void step() final; };
 [[deprecated("use free_fn")]] int old_fn();
 namespace detail { int nope(); }
 namespace test { int nope_either(); }
@@ -1076,6 +1139,14 @@ def self_test() -> int:
             "core using swarm::core::Derived::Base::run (public)",
             "attribute ns3::Monitor::Url initial=BooleanValue(true) checker=MakeBooleanChecker()",
             "core deprecated swarm::core::old_fn",
+            # whitespace inside a literal is kept: "a  b" and "a b" are two defaults (swarm-core#35)
+            "core function swarm::core::spaced: int (const char *, char) [defaults 0=\"a  b\"; 1=' ']",
+            # `final` is recorded on a class and on a method (swarm-core#35)
+            "core struct swarm::core::Step",
+            "core function swarm::core::Step::~Step public virtual: void () noexcept",
+            "core function swarm::core::Step::step public virtual: void ()",
+            "core struct swarm::core::Sealed final : public Step",
+            "core function swarm::core::Sealed::step public final: void ()",
         }
         missing, extra = expect - got, got - expect
         # the destructor's spelling of noexcept varies with clang; accept either form
@@ -1105,6 +1176,21 @@ def self_test() -> int:
             findings(removed, removed, text, "feat: drop", "text\n\nBREAKING CHANGE: free_fn goes")
             == []
         )
+        assert (
+            findings(removed, removed, text, "feat: drop", "text\n\nBREAKING-CHANGE: free_fn goes")
+            == []
+        )
+        # a footer quoted inside a code fence is an example, not the PR's mark (swarm-core#35)
+        for fence in ("```", "~~~", "````"):
+            quoted = f"how to mark one:\n\n{fence}text\nBREAKING CHANGE: say what\n{fence}\n"
+            f = findings(removed, removed, text, "feat: drop", quoted)
+            assert len(f) == 1 and "not marked breaking" in f[0], fence
+            assert (
+                findings(removed, removed, text, "feat: drop", quoted + "\nBREAKING CHANGE: x")
+                == []
+            )
+        unclosed = "```\nBREAKING CHANGE: inside an unclosed fence\n"
+        assert len(findings(removed, removed, text, "feat: drop", unclosed)) == 1
         # an experimental item may go or change in any release; a frozen one made experimental may not
         no_exp = HEADER + "".join(f"{x}\n" for x in sorted(got) if "FuzzyThing" not in x)
         assert findings(no_exp, no_exp, text, "feat: drop", "") == []
