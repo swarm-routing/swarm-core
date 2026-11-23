@@ -28,6 +28,7 @@ void TestPheromoneTable(Checker& c);
 void TestPheromoneRows(Checker& c);
 void TestOnePassEvaporation(Checker& c);
 void TestPerDestinationEvaporation(Checker& c);
+void TestPerDestinationEvaporationCallbacks(Checker& c);
 void TestPerDestinationEvaporationAntHocNet(Checker& c);
 void TestPheromoneTableModel(Checker& c);
 void TestEvaporation(Checker& c);

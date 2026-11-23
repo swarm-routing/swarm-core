@@ -11,7 +11,7 @@ namespace swarm::core::test {
 
 namespace {
 
-constexpr std::array<NamedTest, 35> kTests{{
+constexpr std::array<NamedTest, 36> kTests{{
     {"wire: roundtrip of every field", TestWireRoundtrip},
     {"wire: the reader fails closed", TestWireFailsClosed},
     {"wire: seeded fuzz (fails or round-trips to itself)", TestWireFuzz},
@@ -26,6 +26,8 @@ constexpr std::array<NamedTest, 35> kTests{{
     {"pheromone table: rows, forEach, best, add", TestPheromoneRows},
     {"pheromone table: one-pass evaporation", TestOnePassEvaporation},
     {"pheromone table: per-destination evaporation, filtered", TestPerDestinationEvaporation},
+    {"pheromone table: per-destination evaporation, throwing or reading callbacks",
+     TestPerDestinationEvaporationCallbacks},
     {"pheromone table: per-destination evaporation is AntHocNet's ageing, bit for bit",
      TestPerDestinationEvaporationAntHocNet},
     {"pheromone table: same as the std::map storage", TestPheromoneTableModel},
