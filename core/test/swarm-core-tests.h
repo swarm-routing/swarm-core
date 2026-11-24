@@ -41,6 +41,8 @@ void TestSelectionScratch(Checker& c);
 void TestRouteDecision(Checker& c);
 void TestPortsAndMetric(Checker& c);
 void TestEnergyMetric(Checker& c);
+void TestEnergyProvider(Checker& c);
+void TestLocationProvider(Checker& c);
 void TestFuzzyMemberships(Checker& c);
 void TestFuzzyMetric(Checker& c);
 void TestObserverCallbacks(Checker& c);

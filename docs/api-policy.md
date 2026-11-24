@@ -86,7 +86,10 @@ a PR that removes or changes a line of the base's record must be marked
 breaking, a `!` before the colon of its title (`feat!: ...`) or a
 `BREAKING CHANGE:` footer (a major after 1.0). A deprecation adds a
 `deprecated` or `*-support` line and changes none, so it reads as the minor
-it is. Until the v1.0.0 freeze the check was report-only (a warning); the
+it is. A defaulted destructor that gains ` noexcept` in the record is not a
+change: clang spells the implicit specification only once a class in the
+headers derives from it (swarm-routing/swarm-core#7), so the guard reads both
+spellings as one. Until the v1.0.0 freeze the check was report-only (a warning); the
 freeze made it strict and a required check.
 
 ## Experimental
@@ -104,6 +107,7 @@ that uses one. A consumer that relies on one pins a release.
 | Piece | Why experimental |
 |---|---|
 | `FuzzyMetric`, `FuzzyMetricParams`, `FuzzyMemberships`, `fuzzyMemberships`, `FuzzyTerm`, `kFuzzyTerms` (`core/swarm-fuzzy-metric.h`, #3) | no protocol selects it; AntHocNet has no fuzzy metric to port; its A/B (#132) waits for one |
+| `ILocationProvider`, `NullLocationProvider`, `GeoPose`, `Vec3` (`core/swarm-location.h`, swarm-routing/swarm-core#7) | added experimental, not marked later: one protocol shape so far (AntHocNet's kinematics, swarm-routing/AntHocNet#573); frozen once a second protocol (POSANT) uses it (maintainer decision 2026-11-22 on swarm-routing/swarm-core#7) |
 | `IslLinkMonitor` (`model/swarm-isl-link-monitor.h`, #4), with its attributes and trace sources | no protocol uses it; AntHocNet's own ISL code, where it came from, may adopt it after its port |
 | `SwarmRoutingBase`'s `IslHelloSuppression` attribute, `OnLinkUp`, `BeaconSuppressed`, `IsLinkStateNeighbor` | the base API that only `IslLinkMonitor` drives |
 

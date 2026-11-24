@@ -17,6 +17,7 @@ set(SWARM_CORE_HEADERS
   swarm-envelope.h
   swarm-fuzzy-metric.h
   swarm-link-metric.h
+  swarm-location.h
   swarm-observer.h
   swarm-pheromone-table.h
   swarm-ports.h
@@ -40,6 +41,7 @@ set(SWARM_CORE_TEST_SOURCES
   test/test-envelope.cc
   test/test-metrics.cc
   test/test-fuzzy-metric.cc
+  test/test-ports.cc
   test/test-observer.cc
   test/test-selection.cc
   test/test-structures.cc

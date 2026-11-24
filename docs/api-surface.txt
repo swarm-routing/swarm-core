@@ -12,6 +12,7 @@ core class swarm::core::DedupHistory
 core class swarm::core::EnergyMetric : public ILinkMetric
 core class swarm::core::IClock
 core class swarm::core::IEnergy
+core class swarm::core::IEnergyProvider : public IEnergy
 core class swarm::core::ILinkMetric
 core class swarm::core::ILinkQuality
 core class swarm::core::ILinkState
@@ -19,6 +20,7 @@ core class swarm::core::INeighborProvider
 core class swarm::core::IRng
 core class swarm::core::IRouterObserver
 core class swarm::core::ITimerScheduler
+core class swarm::core::NullEnergyProvider final : public IEnergyProvider
 core class swarm::core::PheromoneTable
 core class swarm::core::VisitedPath
 core class swarm::core::WireReader
@@ -26,8 +28,12 @@ core class swarm::core::WireWriter : public WireFields<WireWriter>
 core class swarm::core::testbench::EventQueue : public IClock
 core class swarm::core::testbench::Rng : public IRng
 core class swarm::core::testbench::Topology
+core enum class swarm::core::PowerSource : std::uint8_t
 core enum class swarm::core::RouteAction : int
 core enum class swarm::core::testbench::TraceEvent : std::uint8_t
+core enumerator swarm::core::PowerSource::Battery = 1
+core enumerator swarm::core::PowerSource::Mains = 2
+core enumerator swarm::core::PowerSource::Unknown = 0
 core enumerator swarm::core::RouteAction::Broadcast = 2
 core enumerator swarm::core::RouteAction::Deliver = 4
 core enumerator swarm::core::RouteAction::DiscardPending = 6
@@ -47,6 +53,8 @@ core field swarm::core::ControlCounters::rxPackets (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txBroadcasts (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txBytes (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txPackets (public): std::uint64_t = 0
+core field swarm::core::EnergySnapshot::fraction (public): double = std::numeric_limits<double>::quiet_NaN()
+core field swarm::core::EnergySnapshot::source (public): PowerSource = PowerSource::Unknown
 core field swarm::core::Envelope::payload (public): std::span<const std::uint8_t>
 core field swarm::core::Envelope::protocolId (public): std::uint8_t = kProtocolIdInvalid
 core field swarm::core::Hop::node (public): NodeAddress = kInvalidAddress
@@ -110,6 +118,7 @@ core function swarm::core::EnergyMetric::floor public: double () const
 core function swarm::core::EnergyMetric::hopCost public: double (const HopSignals &) const
 core function swarm::core::EnergyMetric::pheromone public: double (const LinkObservation &) const
 core function swarm::core::EnergyMetric::usesLinkQuality public: bool () const
+core function swarm::core::EnergySnapshot::residualFraction public: double () const
 core function swarm::core::FixedWireWriter::append public: void (const std::uint8_t *, std::size_t)
 core function swarm::core::FixedWireWriter::bytes public: std::span<const std::uint8_t> () const
 core function swarm::core::FixedWireWriter::ok public: bool () const
@@ -118,7 +127,9 @@ core function swarm::core::Hop::operator== public constexpr: bool (const Hop &) 
 core function swarm::core::IClock::now public virtual: Time () const = 0
 core function swarm::core::IClock::~IClock public virtual constexpr: void () noexcept = default
 core function swarm::core::IEnergy::residualEnergyFraction public virtual: double () const = 0
-core function swarm::core::IEnergy::~IEnergy public virtual constexpr: void () = default
+core function swarm::core::IEnergy::~IEnergy public virtual constexpr: void () noexcept = default
+core function swarm::core::IEnergyProvider::residualEnergyFraction public: double () const
+core function swarm::core::IEnergyProvider::snapshot public virtual: EnergySnapshot () const = 0
 core function swarm::core::ILinkMetric::hopCost public virtual: double (const HopSignals &) const
 core function swarm::core::ILinkMetric::pheromone public virtual: double (const LinkObservation &) const = 0
 core function swarm::core::ILinkMetric::usesLinkQuality public virtual: bool () const
@@ -143,6 +154,7 @@ core function swarm::core::ITimerScheduler::cancel public virtual: void (TimerHa
 core function swarm::core::ITimerScheduler::schedule public virtual: void (Time, std::function<void ()>) = 0
 core function swarm::core::ITimerScheduler::scheduleCancellable public virtual: TimerHandle (Time, std::function<void ()>)
 core function swarm::core::ITimerScheduler::~ITimerScheduler public virtual constexpr: void () = default
+core function swarm::core::NullEnergyProvider::snapshot public: EnergySnapshot () const
 core function swarm::core::PheromoneTable::Entry::operator== public constexpr: bool (const Entry &) const = default
 core function swarm::core::PheromoneTable::PheromoneTable public explicit: void (std::size_t)
 core function swarm::core::PheromoneTable::add public: bool (NodeAddress, NodeAddress, double)
@@ -302,6 +314,7 @@ core function swarm::core::testbench::Topology::valid public: bool (NodeAddress)
 core function swarm::core::testbench::TraceRecord::operator== public constexpr: bool (const TraceRecord &) const = default
 core function swarm::core::writeEnvelope: bool (WireWriter &, std::uint8_t, std::span<const std::uint8_t>)
 core struct swarm::core::ControlCounters
+core struct swarm::core::EnergySnapshot
 core struct swarm::core::Envelope
 core struct swarm::core::Hop
 core struct swarm::core::HopSignals
@@ -343,6 +356,8 @@ core var swarm::core::kRouteActionCount (constexpr): const std::size_t = static_
 core var swarm::core::testbench::EventQueue::kDefaultMaxPending (public constexpr static): const std::size_t = std::size_t{1} << 20
 core var swarm::core::testbench::Rng::kChannelStream (public constexpr static): const std::uint64_t = ~0ull
 experimental core class swarm::core::FuzzyMetric : public ILinkMetric
+experimental core class swarm::core::ILocationProvider
+experimental core class swarm::core::NullLocationProvider final : public ILocationProvider
 experimental core enum class swarm::core::FuzzyTerm : std::size_t
 experimental core enumerator swarm::core::FuzzyTerm::High = 2
 experimental core enumerator swarm::core::FuzzyTerm::Low = 0
@@ -355,13 +370,23 @@ experimental core field swarm::core::FuzzyMetricParams::delayLow (public): doubl
 experimental core field swarm::core::FuzzyMetricParams::rules (public): std::array<std::array<double, kFuzzyTerms>, kFuzzyTerms> = {{ {0.40, 0.70, 1.00}, {0.25, 0.50, 0.70}, {0.10, 0.25, 0.40}, }}
 experimental core field swarm::core::FuzzyMetricParams::stabilityHigh (public): double = 0.75
 experimental core field swarm::core::FuzzyMetricParams::stabilityLow (public): double = 0.25
+experimental core field swarm::core::GeoPose::position (public): Vec3
+experimental core field swarm::core::GeoPose::velocity (public): std::optional<Vec3>
+experimental core field swarm::core::Vec3::x (public): double = 0.0
+experimental core field swarm::core::Vec3::y (public): double = 0.0
+experimental core field swarm::core::Vec3::z (public): double = 0.0
 experimental core function swarm::core::FuzzyMemberships::operator[] public: double (FuzzyTerm) const
 experimental core function swarm::core::FuzzyMetric::FuzzyMetric public explicit: void (const FuzzyMetricParams &) [defaults 0={}]
 experimental core function swarm::core::FuzzyMetric::params public: const FuzzyMetricParams &() const
 experimental core function swarm::core::FuzzyMetric::pheromone public: double (const LinkObservation &) const
 experimental core function swarm::core::FuzzyMetric::quality public: double (const LinkObservation &) const
+experimental core function swarm::core::ILocationProvider::pose public virtual: std::optional<GeoPose> () const = 0
+experimental core function swarm::core::ILocationProvider::~ILocationProvider public virtual constexpr: void () noexcept = default
+experimental core function swarm::core::NullLocationProvider::pose public: std::optional<GeoPose> () const
 experimental core function swarm::core::fuzzyMemberships: FuzzyMemberships (double, double, double)
 experimental core struct swarm::core::FuzzyMemberships
 experimental core struct swarm::core::FuzzyMetricParams
+experimental core struct swarm::core::GeoPose
+experimental core struct swarm::core::Vec3
 experimental core var swarm::core::FuzzyMetric::kName (public constexpr static): const std::string_view = "fuzzy"
 experimental core var swarm::core::kFuzzyTerms (constexpr): const std::size_t = 3
