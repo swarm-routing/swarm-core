@@ -53,7 +53,7 @@ option(SWARM_CORE_TESTS "Build the tests and register them with ctest" ${SWARM_C
 option(SWARM_CORE_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(SWARM_CORE_BENCH "Build the microbenchmarks (fetches Google Benchmark)" OFF)
 option(SWARM_CORE_INSTALL "Add the install rules and the CMake package swarm-core" ${SWARM_CORE_TOP_LEVEL})
-# The strict warnings the ns-3 CI applies to this module (ns3-containers'
+# The strict warnings the ns-3 CI applies to this module (sim-containers'
 # swarm-quality.cmake), so a local build catches what CI would.
 set(SWARM_CORE_WARNINGS -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor -Wold-style-cast
                         -Wcast-align -Woverloaded-virtual -Wnull-dereference -Wformat=2)
