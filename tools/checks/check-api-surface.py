@@ -103,7 +103,8 @@ BREAKING_FOOTER = re.compile(r"^BREAKING[ -]CHANGE:", re.M)
 # frozen line, so it reads as the breaking change it is.
 EXPERIMENTAL_MARK = "experimental "
 EXPERIMENTAL = re.compile(
-    r"^(swarm::core::(Fuzzy\w*|fuzzyMemberships|kFuzzyTerms)"
+    r"^(swarm::core::(Fuzzy\w*|fuzzyMemberships|kFuzzyTerms"
+    r"|Vec3|GeoPose|ILocationProvider|NullLocationProvider)"
     r"|ns3::IslLinkMonitor"
     r"|ns3::SwarmRoutingBase::(IslHelloSuppression|BeaconSuppressed|IsLinkStateNeighbor|OnLinkUp))"
     r"(::|$)"

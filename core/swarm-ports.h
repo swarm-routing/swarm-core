@@ -5,7 +5,9 @@
 // swarm-routing/AntHocNet core/include/anthocnet/core/ports.h @ 78c4640
 // (MIT OR GPL-2.0-only): IClock, IRng, INeighborProvider, ITimerScheduler,
 // ILinkState, ILinkQuality and IEnergy as there. AntHocNet's IKinematics
-// stays behind: only AntHocNet uses it (golden rule 11). Its IRouterObserver,
+// stays behind: only AntHocNet uses it (golden rule 11); the experimental
+// ILocationProvider (swarm-location.h, swarm-routing/swarm-core#7) is the
+// shared position port meant to replace it. Its IRouterObserver,
 // widened for every protocol, is in swarm-observer.h (#42).
 //
 // A protocol's core depends only on these interfaces, never on a simulator
@@ -16,8 +18,10 @@
 
 #include "swarm-types.h"
 
+#include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -109,6 +113,57 @@ class IEnergy {
 public:
     virtual ~IEnergy() = default;
     virtual double residualEnergyFraction() const = 0;
+};
+
+/// What powers a node (swarm-routing/swarm-core#7). Unknown is "no evidence":
+/// the host has no energy model.
+enum class PowerSource : std::uint8_t {
+    Unknown = 0,
+    Battery = 1,
+    Mains = 2,
+};
+
+/// One reading of a node's energy (swarm-routing/swarm-core#7), for the
+/// energy-aware protocols (BeeAdHoc, BeeSensor, Q-Swarm). `fraction` is the
+/// battery's residual fraction, 0..1, and is read only for a Battery source.
+struct EnergySnapshot {
+    PowerSource source = PowerSource::Unknown;
+    double fraction = std::numeric_limits<double>::quiet_NaN();
+
+    /// The residual fraction a protocol ranks by, with IEnergy's meaning:
+    /// Battery gives `fraction` clamped to 0..1 (NaN stays NaN); Mains gives
+    /// 1, a full battery that never drains (the mains fallback: a mains node
+    /// is never priced as a drained relay); Unknown gives NaN, so an
+    /// energy-aware metric degrades to hop count.
+    double residualFraction() const {
+        switch (source) {
+        case PowerSource::Battery:
+            if (std::isnan(fraction)) return fraction;
+            return fraction < 0.0 ? 0.0 : (fraction > 1.0 ? 1.0 : fraction);
+        case PowerSource::Mains:
+            return 1.0;
+        case PowerSource::Unknown:
+            break;
+        }
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+};
+
+/// The energy port with the power source (swarm-routing/swarm-core#7), added
+/// beside IEnergy, which keeps its signature. A host that serves both
+/// answers IEnergy::residualEnergyFraction() with
+/// snapshot().residualFraction(), so the two never disagree.
+class IEnergyProvider {
+public:
+    virtual ~IEnergyProvider() = default;
+    virtual EnergySnapshot snapshot() const = 0;
+};
+
+/// The energy provider of a host without an energy signal: always Unknown, so
+/// its residualFraction() is NaN.
+class NullEnergyProvider final : public IEnergyProvider {
+public:
+    EnergySnapshot snapshot() const override { return {}; }
 };
 
 }  // namespace swarm::core

@@ -11,7 +11,7 @@ namespace swarm::core::test {
 
 namespace {
 
-constexpr std::array<NamedTest, 39> kTests{{
+constexpr std::array<NamedTest, 41> kTests{{
     {"wire: roundtrip of every field", TestWireRoundtrip},
     {"wire: the reader fails closed", TestWireFailsClosed},
     {"wire: seeded fuzz (fails or round-trips to itself)", TestWireFuzz},
@@ -41,6 +41,8 @@ constexpr std::array<NamedTest, 39> kTests{{
     {"route decision", TestRouteDecision},
     {"ports and the link-metric seam", TestPortsAndMetric},
     {"energy metric: hop cost, floor, AntHocNet's bits", TestEnergyMetric},
+    {"energy provider: snapshot, power source, mains fallback, null", TestEnergyProvider},
+    {"location provider (experimental): pose, optional velocity, null", TestLocationProvider},
     {"fuzzy metric: memberships at their breakpoints", TestFuzzyMemberships},
     {"fuzzy metric: every rule, interpolation, unknowns, validation", TestFuzzyMetric},
     {"timer port: cancellable, additive", TestTimerPortDefaults},

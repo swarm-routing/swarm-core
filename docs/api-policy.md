@@ -104,6 +104,7 @@ that uses one. A consumer that relies on one pins a release.
 | Piece | Why experimental |
 |---|---|
 | `FuzzyMetric`, `FuzzyMetricParams`, `FuzzyMemberships`, `fuzzyMemberships`, `FuzzyTerm`, `kFuzzyTerms` (`core/swarm-fuzzy-metric.h`, #3) | no protocol selects it; AntHocNet has no fuzzy metric to port; its A/B (#132) waits for one |
+| `ILocationProvider`, `NullLocationProvider`, `GeoPose`, `Vec3` (`core/swarm-location.h`, swarm-routing/swarm-core#7) | added experimental, not marked later: one protocol shape so far (AntHocNet's kinematics, swarm-routing/AntHocNet#573); frozen once a second protocol (POSANT) uses it (maintainer decision 2026-11-22 on swarm-routing/swarm-core#7) |
 | `IslLinkMonitor` (`model/swarm-isl-link-monitor.h`, #4), with its attributes and trace sources | no protocol uses it; AntHocNet's own ISL code, where it came from, may adopt it after its port |
 | `SwarmRoutingBase`'s `IslHelloSuppression` attribute, `OnLinkUp`, `BeaconSuppressed`, `IsLinkStateNeighbor` | the base API that only `IslLinkMonitor` drives |
 
