@@ -5,7 +5,7 @@
 [10.5281/zenodo.24268942](https://doi.org/10.5281/zenodo.24268942)). This page is what swarm-core
 promises its consumers from then on, how that promise is versioned, and how
 an API is retired. It is the written policy the v1.0.0 row of the
-[roadmap](roadmap.md) asked for. The 0.x rules at the end are kept as the
+[roadmap](https://github.com/swarm-routing/swarm-adapter-ns3/blob/main/docs/roadmap.md) asked for. The 0.x rules at the end are kept as the
 record of what held before.
 
 > **Moved here from swarm-routing/swarm-adapter-ns3 (#6).** This page came with
