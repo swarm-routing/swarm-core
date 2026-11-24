@@ -11,7 +11,7 @@ namespace swarm::core::test {
 
 namespace {
 
-constexpr std::array<NamedTest, 40> kTests{{
+constexpr std::array<NamedTest, 41> kTests{{
     {"wire: roundtrip of every field", TestWireRoundtrip},
     {"wire: the reader fails closed", TestWireFailsClosed},
     {"wire: seeded fuzz (fails or round-trips to itself)", TestWireFuzz},
