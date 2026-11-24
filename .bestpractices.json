@@ -126,7 +126,7 @@
   "static_analysis_often_status": "?",
   "static_analysis_often_justification": "No static analysis found.",
   "dynamic_analysis_status": "Met",
-  "dynamic_analysis_justification": "Dynamic analysis (AddressSanitizer) in CI: https://github.com/swarm-routing/swarm-core/blob/main/.github/workflows/core.yml.",
+  "dynamic_analysis_justification": "Dynamic analysis (fuzzing) in CI: https://github.com/swarm-routing/swarm-core/blob/main/.github/workflows/core.yml.",
   "dynamic_analysis_unsafe_status": "Met",
   "dynamic_analysis_unsafe_justification": "C/C++ tests run under AddressSanitizer in CI: https://github.com/swarm-routing/swarm-core/blob/main/.github/workflows/core.yml.",
   "dynamic_analysis_enable_assertions_status": "Met",
