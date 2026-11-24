@@ -17,6 +17,8 @@
 # SWARM_CORE_BENCH=ON adds the microbenchmarks (bench/, dev-only: Google
 # Benchmark fetched at a pinned commit, checked by its hash; nothing shipped
 # links it).
+# SWARM_CORE_FUZZ=ON adds the libFuzzer targets (fuzz/, Clang only, dev-only:
+# nothing shipped links them; CI's `fuzz` job runs each for a bounded time).
 # SWARM_CORE_INSTALL adds the install rules: the library, the headers under
 # include/swarm-core/ and the CMake package swarm-core (#133), so
 # `find_package(swarm-core CONFIG REQUIRED)` gives the imported target
@@ -53,12 +55,20 @@ option(SWARM_CORE_TESTS "Build the tests and register them with ctest" ${SWARM_C
 option(SWARM_CORE_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(SWARM_CORE_BENCH "Build the microbenchmarks (fetches Google Benchmark)" OFF)
 option(SWARM_CORE_INSTALL "Add the install rules and the CMake package swarm-core" ${SWARM_CORE_TOP_LEVEL})
+option(SWARM_CORE_FUZZ "Build the libFuzzer targets in fuzz/ (Clang only)" OFF)
 # The strict warnings the ns-3 CI applies to this module (sim-containers'
-# swarm-quality.cmake), so a local build catches what CI would.
-set(SWARM_CORE_WARNINGS -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor -Wold-style-cast
-                        -Wcast-align -Woverloaded-virtual -Wnull-dereference -Wformat=2)
+# swarm-quality.cmake), so a local build catches what CI would. MSVC (the
+# report-only CI leg, #9) gets its own spelling of strict.
+if(MSVC)
+  set(SWARM_CORE_WARNINGS /W4 /permissive-)
+  set(SWARM_CORE_WERROR /WX)
+else()
+  set(SWARM_CORE_WARNINGS -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor -Wold-style-cast
+                          -Wcast-align -Woverloaded-virtual -Wnull-dereference -Wformat=2)
+  set(SWARM_CORE_WERROR -Werror)
+endif()
 if(SWARM_CORE_TOP_LEVEL)
-  add_compile_options(${SWARM_CORE_WARNINGS} -Werror)
+  add_compile_options(${SWARM_CORE_WARNINGS} ${SWARM_CORE_WERROR})
 endif()
 if(SWARM_CORE_SANITIZE)
   add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
@@ -128,6 +138,10 @@ if(SWARM_CORE_TESTS)
 
   enable_testing()
   add_test(NAME swarm-core COMMAND swarm_core_tests)
+endif()
+
+if(SWARM_CORE_FUZZ)
+  add_subdirectory(fuzz)
 endif()
 
 if(SWARM_CORE_BENCH)

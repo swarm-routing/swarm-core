@@ -58,6 +58,7 @@ headers: `make headers`, the org's `check-headers` gate.
 | `licence.yml` | SPDX headers and the licence texts | yes (`headers / licence`) |
 | `pr-title.yml` | the PR title is a lowercase Conventional Commit | yes (`title / title`) |
 | `review-gate.yml` | CodeRabbit has reviewed the PR | yes (`review / coderabbit`) |
+| `core.yml` | `core/` built and tested on GCC 13, GCC 14 and Clang 18 with warnings as errors, then under ASan + UBSan (`core (<compiler>)`), clang-format, the consumer check (`core checks`), all gated by `core`; `core/`'s C++ standard against ns-3's minimum; every libFuzzer target in `core/fuzz/` for 60 s (`cmake -S core -B build/fuzz -DSWARM_CORE_FUZZ=ON -DCMAKE_CXX_COMPILER=clang++`); MSVC on Windows | yes (`core`, `cxx-standard`, `fuzz`); MSVC no (`core (msvc, report-only)`) |
 | `dco.yml` | an outside contributor signed off | no |
 | `scorecard.yml`, `bestpractices-evidence.yml` | OpenSSF Scorecard; best-practices evidence | no |
 | `settings-apply.yml`, `epics-changed.yml` | nudge the org's repo-settings and epic lists | no |

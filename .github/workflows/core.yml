@@ -11,6 +11,16 @@ name: Core
 # with the org .clang-format. Licence headers are licence.yml's
 # (`headers / licence`). The check name is `core`; no `paths:` filter, as a
 # required check runs on every PR (a docs-only change skips the steps inside).
+#
+# Native CI (#9): the build and the tests run once per compiler, in parallel
+# (`core (<compiler>)`): GCC 13 and 14 (the toolchains of the ns3-dev images,
+# ubuntu 24.04 and debian 13) and Clang 18 (the runner's, as clang-format-18),
+# each with the strict warnings as errors, then under ASan + UBSan. The job
+# named `core`, the required check, passes only when every leg and
+# `core checks` passed, so a compiler added to the matrix needs no settings
+# change. `fuzz` (required) runs every libFuzzer target in core/fuzz/ for 60 s;
+# `core (msvc, report-only)` builds on Windows and never blocks a merge
+# (maintainer decision 18 of 2026-11-22).
 on:
   push:
     branches: [main]
@@ -27,8 +37,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  core:
-    name: core
+  checks:
+    name: core checks
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -60,21 +70,181 @@ jobs:
         run: |
           python3 -I tools/checks/check-cxx-standard.py --self-test
           python3 -I tools/bench/bench_compare.py --self-test
+      - name: core/ as a library in another CMake project, installed as a package, and by release tarball
+        if: steps.changes.outputs.docs-only != 'true'
+        run: tools/checks/check-core-consumer.sh build/consumer
+
+  # One leg per compiler, all preinstalled on ubuntu-24.04 (no apt step). The
+  # legs skip their work inside on a docs-only change, never by a job-level
+  # `if:` (a skipped matrix job would leave `core` without its result).
+  build:
+    name: core (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc-13
+            cxx: g++-13
+          - compiler: gcc-14
+            cxx: g++-14
+          - compiler: clang-18
+            cxx: clang++-18
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@9a1ce0ffeda6916186f97b0c5a7678bcbc7578ad # main@2026-11-24
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.docs-only != 'true'
+        with:
+          persist-credentials: false
       - name: Build and test (debug, strict warnings)
         if: steps.changes.outputs.docs-only != 'true'
+        env:
+          CXX: ${{ matrix.cxx }}
         run: |
+          "$CXX" --version | head -n 1
           cmake -S core -B build/debug -DCMAKE_BUILD_TYPE=Debug
           cmake --build build/debug -j "$(nproc)"
           ctest --test-dir build/debug --output-on-failure
       - name: Build and test (ASan + UBSan)
         if: steps.changes.outputs.docs-only != 'true'
+        env:
+          CXX: ${{ matrix.cxx }}
         run: |
           cmake -S core -B build/sanitized -DCMAKE_BUILD_TYPE=Debug -DSWARM_CORE_SANITIZE=ON
           cmake --build build/sanitized -j "$(nproc)"
           ctest --test-dir build/sanitized --output-on-failure
-      - name: core/ as a library in another CMake project, installed as a package, and by release tarball
+
+  # The required check: every compiler leg and `core checks` passed.
+  core:
+    name: core
+    needs: [checks, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      - name: Every core leg passed
+        env:
+          RESULTS: ${{ needs.checks.result }} ${{ needs.build.result }}
+        run: |
+          echo "core checks, compiler legs: $RESULTS"
+          for r in $RESULTS; do
+            [ "$r" = success ] || { echo "::error::a core leg did not pass ($RESULTS)"; exit 1; }
+          done
+
+  # libFuzzer on the readers of untrusted bytes (core/fuzz/, org rule 3): every
+  # fuzz-* target, all at once, each for 60 s from an empty corpus, under ASan +
+  # UBSan. Bounded by -max_total_time, so it is a required check; the job takes
+  # about 1.5 min whatever the number of targets (up to the runner's 4 cores),
+  # inside swarm-routing/.github#150's 2-minute job budget. A crash, a sanitizer
+  # report or a broken reader contract fails it; the reproducer is uploaded.
+  fuzz:
+    name: fuzz
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10  # the backstop should -max_total_time ever be dropped
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@9a1ce0ffeda6916186f97b0c5a7678bcbc7578ad # main@2026-11-24
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.changes.outputs.docs-only != 'true'
-        run: tools/checks/check-core-consumer.sh build/consumer
+        with:
+          persist-credentials: false
+      - name: Build the fuzz targets (clang-18, libFuzzer + ASan + UBSan)
+        if: steps.changes.outputs.docs-only != 'true'
+        run: |
+          cmake -S core -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DSWARM_CORE_FUZZ=ON \
+            -DSWARM_CORE_TESTS=OFF -DCMAKE_CXX_COMPILER=clang++-18
+          cmake --build build/fuzz -j "$(nproc)"
+      - name: Fuzz every target for 60 s
+        if: steps.changes.outputs.docs-only != 'true'
+        timeout-minutes: 5
+        run: |
+          mkdir -p build/fuzz-out
+          pids=()
+          for bin in build/fuzz/fuzz/fuzz-*; do
+            [ -x "$bin" ] || continue
+            name=$(basename "$bin")
+            mkdir -p "build/fuzz-out/$name/corpus"
+            (cd "build/fuzz-out/$name" && "$GITHUB_WORKSPACE/$bin" -max_total_time=60 -print_final_stats=1 corpus \
+              > log.txt 2>&1) &
+            pids+=("$!:$name")
+          done
+          [ "${#pids[@]}" -gt 0 ] || { echo "::error::no fuzz target built"; exit 1; }
+          status=0
+          for p in "${pids[@]}"; do
+            name=${p#*:}
+            if wait "${p%%:*}"; then result=passed; else result=FAILED; status=1; fi
+            echo "::group::$name: $result"
+            tail -n 40 "build/fuzz-out/$name/log.txt"
+            echo "::endgroup::"
+            [ "$result" = passed ] || echo "::error::$name failed; its reproducer is in the fuzz-crashes artifact"
+          done
+          exit "$status"
+      - name: Upload the reproducers
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-crashes
+          path: |
+            build/fuzz-out/*/crash-*
+            build/fuzz-out/*/leak-*
+            build/fuzz-out/*/timeout-*
+            build/fuzz-out/*/oom-*
+            build/fuzz-out/*/log.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # MSVC, report-only (maintainer decision 18 of 2026-11-22): no org consumer
+  # builds on Windows and C++23 support differs per MSVC release, so a red leg
+  # is a finding, never a blocked merge (continue-on-error, not a required
+  # check). No harden-runner: it audits Linux runners only.
+  msvc:
+    name: core (msvc, report-only)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      # a docs-only change skips the steps below (swarm-routing/.github#581)
+      - uses: swarm-routing/.github/.github/actions/changes@9a1ce0ffeda6916186f97b0c5a7678bcbc7578ad # main@2026-11-24
+        id: changes
+        timeout-minutes: 2
+        with:
+          paths: '\.md$|^docs/references\.bib$|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|FUNDING\.yml|pull_request_template\.md)$|^LICENSE[^/]*$|^CITATION\.cff$|^\.coderabbit\.yaml$|^\.bestpractices\.json$|^\.github/org-sync\.lock$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.docs-only != 'true'
+        with:
+          persist-credentials: false
+      - name: Build and test (Debug, /W4 /WX)
+        if: steps.changes.outputs.docs-only != 'true'
+        shell: bash
+        run: |
+          cmake -S core -B build/msvc
+          cmake --build build/msvc --config Debug -j 4
+          ctest --test-dir build/msvc -C Debug --output-on-failure
 
   # core/'s C++ standard against the minimum of the ns-3 release swarm-core
   # supports, read from the ns3-dev image's tree (docs/api-policy.md "C++

@@ -24,7 +24,7 @@ topics = ["cpp23", "swarm-intelligence", "routing-protocol", "ports-and-adapters
 ruleset = "protocol"
 # Only checks that run on every PR today. Add the build and test checks (core, ns-3, ...)
 # once their workflows exist and run on pull_request and merge_group.
-required_checks = ["check / org-sync", "headers / licence", "title / title", "review / coderabbit", "core", "cxx-standard", "api-surface"]
+required_checks = ["check / org-sync", "headers / licence", "title / title", "review / coderabbit", "core", "cxx-standard", "api-surface", "fuzz"]
 # Merge through a merge queue (swarm-routing/.github#130); every workflow behind a required
 # check also runs on merge_group.
 merge_queue = true
