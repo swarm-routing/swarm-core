@@ -14,12 +14,12 @@ vcpkg_ports = ["swarm-core"]
 citation = true
 
 [docs]
-arena_id = ""  # its id in swarm-routing.github.io site/hub/projects.json, once listed
+arena_id = "swarm-core"  # its id in swarm-routing.github.io site/hub/projects.json (swarm-routing/swarm-routing.github.io#312)
 
 [settings]
 # GitHub settings as code: swarm-routing/.github tools/repo-settings (swarm-routing/.github#117).
 description = "swarm-core: the pure C++23 ports every swarm-routing protocol core builds on (IClock, ITransport, IRouteTable, IEnergyProvider, ILocationProvider, ILinkMetrics), the 4-byte common wire envelope and header-only protocol contract tests; no OS or simulator headers."
-homepage = ""  # none until the site lists it (swarm-routing/swarm-routing.github.io site/hub/projects.json)
+homepage = "https://swarm-routing.github.io/projects/swarm-core/"
 topics = ["cpp23", "swarm-intelligence", "routing-protocol", "ports-and-adapters", "hexagonal-architecture", "header-only", "manet", "library"]
 ruleset = "protocol"
 # Only checks that run on every PR today. Add the build and test checks (core, ns-3, ...)
