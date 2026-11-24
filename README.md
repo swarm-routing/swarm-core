@@ -15,6 +15,48 @@ swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): t
 
 **Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release pending (#10).** The plan is #3 and swarm-routing/.github#672. `core/` builds, tests and installs alone: `cmake -S core -B build/core && cmake --build build/core && ctest --test-dir build/core` (`make test`); consumers add it with `FetchContent` `SOURCE_SUBDIR core` or `find_package(swarm-core CONFIG)` (target `swarm::core`).
 
+## Protocol contract suite: how a protocol opts in
+
+`core/testbench/swarm-contract-tests.h` (#8) holds the checks every protocol
+core passes, header-only on the testbench (`core/testbench/swarm-testbench.h`),
+with no test framework: a plain executable under `ctest`.
+
+| Check | What it asserts |
+|---|---|
+| `DeterministicExecution` | two runs with one seed give the same trace and digest; another seed gives another digest (org rule 5) |
+| `NullAndUnavailableProvidersAreSafe` | the core runs with every optional port null, and with every port present but without a sample (NaN, no queue, a no-op observer); both runs give one trace |
+| `ZeroTtlAndSelfLoopPacketsAreDropped` | only when the protocol's messages carry a hop limit: a message with hop limit 0, and one back at its origin, change nothing on the air (a live message, the control case, must) |
+
+A protocol supplies only its testbench adapter, `INodeAdapter<Msg>`, built
+with the optional ports in `ContractProviders` (`linkState`, `linkQuality`,
+`energy`, `observer`; null means "no such port"), and adds one test:
+
+```cpp
+// core/test/test-contract.cc of the protocol; link swarm::core, add_test it.
+#include "testbench/swarm-contract-tests.h"
+namespace tb = swarm::core::testbench;
+
+int main() {
+    tb::ContractSpec<MyMsg> spec;              // a 6-node line, 10 s, seeds 1 and 2
+    spec.factory = [](tb::NodePorts<MyMsg>& p, const tb::ContractProviders& prov) {
+        return std::make_unique<MyAdapter>(p, prov);  // hand prov's ports to the core
+    };
+    spec.script = [](tb::Network<MyMsg>& net) { /* traffic, link changes */ };
+    // Only if MyMsg carries a hop limit; leave unset to skip that check.
+    spec.hopLimited = [](swarm::core::NodeAddress origin, swarm::core::NodeAddress dest,
+                         int hopLimit) { return MyMsg::data(origin, dest, hopLimit); };
+    return tb::runProtocolContract(spec) == 0 ? 0 : 1;  // prints ok / skip / FAIL per check
+}
+```
+
+The scene must put traffic on the air, or the checks fail as proving
+nothing. Each check is also callable alone (`checkDeterministicExecution`, ...)
+and returns its failures. A port added to swarm-core later (the energy and
+location providers of #7) becomes one more `ContractProviders` pointer, null
+by default, so an adapter written today keeps compiling.
+`core/test/test-contract.cc` is the reference: a toy hop-limited flood that
+passes, and broken variants each check catches.
+
 <!-- org-sync:begin develop -->
 ## Develop
 

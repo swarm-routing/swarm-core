@@ -54,6 +54,8 @@ void TestTestbenchMac(Checker& c);
 void TestTestbenchExample(Checker& c);
 void TestTestbenchDeterminism(Checker& c);
 void TestTestbenchLocalRepairTrend(Checker& c);
+void TestContractToyPasses(Checker& c);
+void TestContractCatchesBrokenCores(Checker& c);
 
 /// One named test, for the runners.
 struct NamedTest {

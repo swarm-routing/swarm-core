@@ -56,6 +56,9 @@ constexpr std::array<NamedTest, 41> kTests{{
     {"testbench: same seed, identical trace; bounded trace", TestTestbenchDeterminism},
     {"testbench trend: local repair bounded vs re-flood, 6-node line, one break",
      TestTestbenchLocalRepairTrend},
+    {"contract suite: a toy flood passes every check", TestContractToyPasses},
+    {"contract suite: each check fails on a core that breaks its rule",
+     TestContractCatchesBrokenCores},
 }};
 
 }  // namespace
