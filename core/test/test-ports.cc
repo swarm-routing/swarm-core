@@ -46,13 +46,16 @@ void TestEnergyProvider(Checker& c) {
     c.check(snap(PowerSource::Mains, kNaN).residualFraction() == 1.0, "mains reads 1");
     c.check(snap(PowerSource::Mains, 0.1).residualFraction() == 1.0, "mains ignores a fraction");
 
-    // A provider is an IEnergy: residualEnergyFraction() follows the snapshot.
-    struct Provider : IEnergyProvider {
+    // A host serving both ports answers IEnergy from the snapshot.
+    struct Provider : IEnergyProvider, IEnergy {
         EnergySnapshot s;
         EnergySnapshot snapshot() const override { return s; }
+        double residualEnergyFraction() const override { return s.residualFraction(); }
     } p;
+    const IEnergyProvider& asProvider = p;
     const IEnergy& asEnergy = p;
     p.s = snap(PowerSource::Battery, 0.25);
+    c.check(asProvider.snapshot().source == PowerSource::Battery, "snapshot through the port");
     c.check(asEnergy.residualEnergyFraction() == 0.25, "battery through IEnergy");
     p.s = snap(PowerSource::Mains, kNaN);
     c.check(asEnergy.residualEnergyFraction() == 1.0, "mains through IEnergy");
@@ -64,12 +67,11 @@ void TestEnergyProvider(Checker& c) {
     }()) == 1.0,
             "a mains relay costs one hop");
 
-    // The null provider: Unknown, NaN through IEnergy.
+    // The null provider: Unknown, so NaN: hop count, never a wrong ranking.
     const NullEnergyProvider null;
     const IEnergyProvider& nullPort = null;
-    const IEnergy& nullEnergy = null;
     c.check(nullPort.snapshot().source == PowerSource::Unknown, "null provider: Unknown");
-    c.check(std::isnan(nullEnergy.residualEnergyFraction()), "null provider: NaN through IEnergy");
+    c.check(std::isnan(nullPort.snapshot().residualFraction()), "null provider: NaN");
 }
 
 void TestLocationProvider(Checker& c) {

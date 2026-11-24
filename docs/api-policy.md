@@ -86,10 +86,7 @@ a PR that removes or changes a line of the base's record must be marked
 breaking, a `!` before the colon of its title (`feat!: ...`) or a
 `BREAKING CHANGE:` footer (a major after 1.0). A deprecation adds a
 `deprecated` or `*-support` line and changes none, so it reads as the minor
-it is. A defaulted destructor that gains ` noexcept` in the record is not a
-change: clang spells the implicit specification only once a class in the
-headers derives from it (swarm-routing/swarm-core#7), so the guard reads both
-spellings as one. Until the v1.0.0 freeze the check was report-only (a warning); the
+it is. Until the v1.0.0 freeze the check was report-only (a warning); the
 freeze made it strict and a required check.
 
 ## Experimental

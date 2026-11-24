@@ -12,7 +12,7 @@ core class swarm::core::DedupHistory
 core class swarm::core::EnergyMetric : public ILinkMetric
 core class swarm::core::IClock
 core class swarm::core::IEnergy
-core class swarm::core::IEnergyProvider : public IEnergy
+core class swarm::core::IEnergyProvider
 core class swarm::core::ILinkMetric
 core class swarm::core::ILinkQuality
 core class swarm::core::ILinkState
@@ -127,9 +127,9 @@ core function swarm::core::Hop::operator== public constexpr: bool (const Hop &) 
 core function swarm::core::IClock::now public virtual: Time () const = 0
 core function swarm::core::IClock::~IClock public virtual constexpr: void () noexcept = default
 core function swarm::core::IEnergy::residualEnergyFraction public virtual: double () const = 0
-core function swarm::core::IEnergy::~IEnergy public virtual constexpr: void () noexcept = default
-core function swarm::core::IEnergyProvider::residualEnergyFraction public: double () const
+core function swarm::core::IEnergy::~IEnergy public virtual constexpr: void () = default
 core function swarm::core::IEnergyProvider::snapshot public virtual: EnergySnapshot () const = 0
+core function swarm::core::IEnergyProvider::~IEnergyProvider public virtual constexpr: void () noexcept = default
 core function swarm::core::ILinkMetric::hopCost public virtual: double (const HopSignals &) const
 core function swarm::core::ILinkMetric::pheromone public virtual: double (const LinkObservation &) const = 0
 core function swarm::core::ILinkMetric::usesLinkQuality public virtual: bool () const

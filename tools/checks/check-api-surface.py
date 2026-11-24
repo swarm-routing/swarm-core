@@ -822,15 +822,6 @@ def is_breaking(title: str, body: str) -> bool:
     return bool(BREAKING_TITLE.match(title.strip()) or BREAKING_FOOTER.search(outside_fences(body)))
 
 
-def implicit_noexcept(item: str) -> str:
-    """ITEM with a defaulted destructor's ` noexcept` dropped. clang spells it
-    only once the destructor's exception specification has been needed, by a
-    class in the headers deriving from it, so a new derived class adds it to a
-    base's unchanged destructor (swarm-routing/swarm-core#7); a defaulted
-    destructor is noexcept either way, so the guard reads the two as one."""
-    return item.replace(") noexcept = default", ") = default") if "::~" in item else item
-
-
 def findings(generated: str, committed: str, base: str | None, title: str, body: str) -> list[str]:
     found = []
     if generated != committed:
@@ -848,11 +839,10 @@ def findings(generated: str, committed: str, base: str | None, title: str, body:
             f"and commit it.\n{diff}"
         )
     if base is not None:
-        now = {implicit_noexcept(x) for x in items(committed)}
         gone = sorted(
             x
-            for x in set(items(base))
-            if implicit_noexcept(x) not in now and not x.startswith(EXPERIMENTAL_MARK)
+            for x in set(items(base)) - set(items(committed))
+            if not x.startswith(EXPERIMENTAL_MARK)
         )
         if gone and not is_breaking(title, body):
             found.append(
@@ -1211,13 +1201,6 @@ def self_test() -> int:
         )
         f = findings(text, text, frozen, "feat: mark", "")
         assert len(f) == 1 and "FuzzyThing" in f[0]
-        # a defaulted destructor gaining its implicit noexcept is no change (swarm-core#7)
-        bare = (
-            HEADER + "core function swarm::core::IBase::~IBase public virtual: void () = default\n"
-        )
-        spelled = bare.replace("() = default", "() noexcept = default")
-        assert findings(spelled, spelled, bare, "feat: derive", "") == []
-        assert findings(bare, bare, spelled, "feat: derive", "") == []
         assert findings(removed, removed, None, "feat: drop", "") == [], (
             "no base record: nothing to compare"
         )

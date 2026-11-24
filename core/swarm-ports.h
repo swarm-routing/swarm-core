@@ -150,17 +150,17 @@ struct EnergySnapshot {
 };
 
 /// The energy port with the power source (swarm-routing/swarm-core#7), added
-/// beside IEnergy, which keeps its signature: an IEnergyProvider is an
-/// IEnergy whose residualEnergyFraction() is snapshot().residualFraction(), so
-/// it plugs in wherever an IEnergy does. A host implements snapshot() only.
-class IEnergyProvider : public IEnergy {
+/// beside IEnergy, which keeps its signature. A host that serves both
+/// answers IEnergy::residualEnergyFraction() with
+/// snapshot().residualFraction(), so the two never disagree.
+class IEnergyProvider {
 public:
+    virtual ~IEnergyProvider() = default;
     virtual EnergySnapshot snapshot() const = 0;
-    double residualEnergyFraction() const override { return snapshot().residualFraction(); }
 };
 
 /// The energy provider of a host without an energy signal: always Unknown, so
-/// residualEnergyFraction() is NaN.
+/// its residualFraction() is NaN.
 class NullEnergyProvider final : public IEnergyProvider {
 public:
     EnergySnapshot snapshot() const override { return {}; }
