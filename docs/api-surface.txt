@@ -4,6 +4,9 @@
 core alias swarm::core::NodeAddress = std::int32_t
 core alias swarm::core::Time = double
 core alias swarm::core::TimerHandle = std::uint64_t
+core alias swarm::core::testbench::ContractSpec::Factory (public) = std::function<std::unique_ptr<INodeAdapter<Msg>> (NodePorts<Msg> &, const ContractProviders &)>
+core alias swarm::core::testbench::ContractSpec::HopLimited (public) = std::function<Msg (NodeAddress, NodeAddress, int)>
+core alias swarm::core::testbench::ContractSpec::Script (public) = std::function<void (Network<Msg> &)>
 core alias swarm::core::testbench::Network::Factory (public) = std::function<std::unique_ptr<INodeAdapter<Msg>> (NodePorts<Msg> &)>
 core alias swarm::core::testbench::Network::KindOf (public) = std::function<std::uint8_t (const Msg &)>
 core alias swarm::core::testbench::Topology::Link (public) = std::pair<NodeAddress, NodeAddress>
@@ -85,6 +88,27 @@ core field swarm::core::RouterStats::stateBytes (public): std::uint32_t = 0
 core field swarm::core::RouterStats::stateEntries (public): std::uint32_t = 0
 core field swarm::core::WeightedHop::node (public): NodeAddress = kInvalidAddress
 core field swarm::core::WeightedHop::weight (public): double = 0.0
+core field swarm::core::testbench::ContractProviders::energy (public): const IEnergy * = nullptr
+core field swarm::core::testbench::ContractProviders::linkQuality (public): const ILinkQuality * = nullptr
+core field swarm::core::testbench::ContractProviders::linkState (public): const ILinkState * = nullptr
+core field swarm::core::testbench::ContractProviders::observer (public): IRouterObserver * = nullptr
+core field swarm::core::testbench::ContractResult::failures (public): std::vector<std::string>
+core field swarm::core::testbench::ContractResult::name (public): const char * = ""
+core field swarm::core::testbench::ContractResult::skipped (public): bool = false
+core field swarm::core::testbench::ContractSpec::config (public): NetworkConfig = {}
+core field swarm::core::testbench::ContractSpec::duration (public): Time = 10.0
+core field swarm::core::testbench::ContractSpec::factory (public): Factory
+core field swarm::core::testbench::ContractSpec::hopLimited (public): HopLimited = {}
+core field swarm::core::testbench::ContractSpec::injectAt (public): Time = -1.0
+core field swarm::core::testbench::ContractSpec::kindOf (public): typename Network<Msg>::KindOf = {}
+core field swarm::core::testbench::ContractSpec::liveHopLimit (public): int = 8
+core field swarm::core::testbench::ContractSpec::maxEvents (public): std::uint64_t = 1'000'000
+core field swarm::core::testbench::ContractSpec::otherSeed (public): std::uint64_t = 2
+core field swarm::core::testbench::ContractSpec::payloadHash (public): std::function<std::uint64_t (const Msg &)> = {}
+core field swarm::core::testbench::ContractSpec::script (public): Script = {}
+core field swarm::core::testbench::ContractSpec::seed (public): std::uint64_t = 1
+core field swarm::core::testbench::ContractSpec::seedChangesTrace (public): bool = true
+core field swarm::core::testbench::ContractSpec::topology (public): Topology = Topology::line(6)
 core field swarm::core::testbench::NetworkConfig::macDelay (public): Time = 0.001
 core field swarm::core::testbench::NetworkConfig::maxPendingEvents (public): std::size_t = EventQueue::kDefaultMaxPending
 core field swarm::core::testbench::NetworkConfig::maxTrace (public): std::size_t = std::size_t{1} << 16
@@ -242,6 +266,7 @@ core function swarm::core::selectNextHop: NodeAddress (const PheromoneTable &, N
 core function swarm::core::selectionDistribution: std::vector<WeightedHop> (const PheromoneTable &, NodeAddress, double, NodeAddress) [defaults 3=kInvalidAddress]
 core function swarm::core::selectionWeights: std::span<const WeightedHop> (const PheromoneTable &, NodeAddress, double, std::vector<WeightedHop> &, NodeAddress) [defaults 4=kInvalidAddress]
 core function swarm::core::selectionWeights: std::vector<WeightedHop> (const PheromoneTable &, NodeAddress, double, NodeAddress) [defaults 3=kInvalidAddress]
+core function swarm::core::testbench::ContractResult::ok public: bool () const
 core function swarm::core::testbench::EventQueue::EventQueue public explicit: void (std::size_t) [defaults 0=kDefaultMaxPending]
 core function swarm::core::testbench::EventQueue::cancel public: bool (TimerHandle)
 core function swarm::core::testbench::EventQueue::executed public: std::uint64_t () const
@@ -323,6 +348,8 @@ core struct swarm::core::LinkObservation
 core struct swarm::core::PheromoneTable::Entry (public)
 core struct swarm::core::RouterStats
 core struct swarm::core::WeightedHop
+core struct swarm::core::testbench::ContractProviders
+core struct swarm::core::testbench::ContractResult
 core struct swarm::core::testbench::NetworkConfig
 core struct swarm::core::testbench::TraceRecord
 core template<class F> function swarm::core::PheromoneTable::forEach public: void (NodeAddress, F &&) const
@@ -333,6 +360,12 @@ core template<typename Message> struct swarm::core::RouteDecision
 core template<typename Msg> class swarm::core::testbench::INodeAdapter
 core template<typename Msg> class swarm::core::testbench::Network
 core template<typename Msg> class swarm::core::testbench::NodePorts : public INeighborProvider, public ITimerScheduler
+core template<typename Msg> function swarm::core::testbench::checkDeterministicExecution: ContractResult (const ContractSpec<Msg> &)
+core template<typename Msg> function swarm::core::testbench::checkNullAndUnavailableProvidersAreSafe: ContractResult (const ContractSpec<Msg> &)
+core template<typename Msg> function swarm::core::testbench::checkZeroTtlAndSelfLoopPacketsAreDropped: ContractResult (const ContractSpec<Msg> &)
+core template<typename Msg> function swarm::core::testbench::contractResults: std::vector<ContractResult> (const ContractSpec<Msg> &)
+core template<typename Msg> function swarm::core::testbench::runProtocolContract: int (const ContractSpec<Msg> &, std::FILE *) [defaults 1=stdout]
+core template<typename Msg> struct swarm::core::testbench::ContractSpec
 core template<typename T> function swarm::core::testbench::Network::nodeAs public: T &(NodeAddress)
 core var swarm::core::EnergyMetric::kDefaultFloor (public constexpr static): const double = 0.01
 core var swarm::core::EnergyMetric::kName (public constexpr static): const std::string_view = "energy"

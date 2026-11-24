@@ -11,7 +11,7 @@ namespace swarm::core::test {
 
 namespace {
 
-constexpr std::array<NamedTest, 41> kTests{{
+constexpr std::array<NamedTest, 43> kTests{{
     {"wire: roundtrip of every field", TestWireRoundtrip},
     {"wire: the reader fails closed", TestWireFailsClosed},
     {"wire: seeded fuzz (fails or round-trips to itself)", TestWireFuzz},
@@ -56,6 +56,9 @@ constexpr std::array<NamedTest, 41> kTests{{
     {"testbench: same seed, identical trace; bounded trace", TestTestbenchDeterminism},
     {"testbench trend: local repair bounded vs re-flood, 6-node line, one break",
      TestTestbenchLocalRepairTrend},
+    {"contract suite: a toy flood passes every check", TestContractToyPasses},
+    {"contract suite: each check fails on a core that breaks its rule",
+     TestContractCatchesBrokenCores},
 }};
 
 }  // namespace
