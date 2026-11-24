@@ -11,11 +11,14 @@ namespace swarm::core::test {
 
 namespace {
 
-constexpr std::array<NamedTest, 36> kTests{{
+constexpr std::array<NamedTest, 39> kTests{{
     {"wire: roundtrip of every field", TestWireRoundtrip},
     {"wire: the reader fails closed", TestWireFailsClosed},
     {"wire: seeded fuzz (fails or round-trips to itself)", TestWireFuzz},
     {"wire: writers byte-identical to the reference on a corpus", TestWireWriterCorpus},
+    {"envelope: roundtrip of every assigned protocol_id, payload untouched", TestEnvelopeRoundtrip},
+    {"envelope: empty payload", TestEnvelopeEmptyPayload},
+    {"envelope: the reader fails closed", TestEnvelopeFailsClosed},
     {"visited path: bounded", TestVisitedPath},
     {"visited path: wire", TestVisitedPathWire},
     {"visited path: re-time the last hop, range-for", TestVisitedPathBackTimeAndRange},

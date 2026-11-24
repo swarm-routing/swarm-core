@@ -47,6 +47,8 @@ core field swarm::core::ControlCounters::rxPackets (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txBroadcasts (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txBytes (public): std::uint64_t = 0
 core field swarm::core::ControlCounters::txPackets (public): std::uint64_t = 0
+core field swarm::core::Envelope::payload (public): std::span<const std::uint8_t>
+core field swarm::core::Envelope::protocolId (public): std::uint8_t = kProtocolIdInvalid
 core field swarm::core::Hop::node (public): NodeAddress = kInvalidAddress
 core field swarm::core::Hop::time (public): Time = 0.0
 core field swarm::core::HopSignals::residualEnergy (public): double = std::numeric_limits<double>::quiet_NaN()
@@ -221,6 +223,7 @@ core function swarm::core::WireWriter::size public: std::size_t () const
 core function swarm::core::energyHopCost: double (double, double)
 core function swarm::core::evaporationFactor: double (double, Time, Time)
 core function swarm::core::findKindName: const char *(std::span<const KindName>, std::uint8_t)
+core function swarm::core::readEnvelope: std::optional<Envelope> (std::span<const std::uint8_t>)
 core function swarm::core::rouletteSelect: NodeAddress (std::span<const WeightedHop>, IRng &)
 core function swarm::core::selectNextHop: NodeAddress (const PheromoneTable &, NodeAddress, double, IRng &, NodeAddress) [defaults 4=kInvalidAddress]
 core function swarm::core::selectNextHop: NodeAddress (const PheromoneTable &, NodeAddress, double, IRng &, std::vector<WeightedHop> &, NodeAddress) [defaults 5=kInvalidAddress]
@@ -297,7 +300,9 @@ core function swarm::core::testbench::Topology::partition public: std::vector<Li
 core function swarm::core::testbench::Topology::size public: std::size_t () const
 core function swarm::core::testbench::Topology::valid public: bool (NodeAddress) const
 core function swarm::core::testbench::TraceRecord::operator== public constexpr: bool (const TraceRecord &) const = default
+core function swarm::core::writeEnvelope: bool (WireWriter &, std::uint8_t, std::span<const std::uint8_t>)
 core struct swarm::core::ControlCounters
+core struct swarm::core::Envelope
 core struct swarm::core::Hop
 core struct swarm::core::HopSignals
 core struct swarm::core::KindName
@@ -320,8 +325,20 @@ core var swarm::core::EnergyMetric::kDefaultFloor (public constexpr static): con
 core var swarm::core::EnergyMetric::kName (public constexpr static): const std::string_view = "energy"
 core var swarm::core::VisitedPath::kHopWireSize (public constexpr static): const std::size_t = 4 + 8
 core var swarm::core::VisitedPath::kMaxCapacity (public constexpr static): const std::size_t = std::numeric_limits<std::uint16_t>::max()
+core var swarm::core::kEnvelopeMagic (constexpr): const std::uint8_t = 0x53
+core var swarm::core::kEnvelopeSize (constexpr): const std::size_t = 4
+core var swarm::core::kEnvelopeVersion (constexpr): const std::uint8_t = 0x01
 core var swarm::core::kInvalidAddress (constexpr): const NodeAddress = -1
 core var swarm::core::kNoTimer (constexpr): const TimerHandle = 0
+core var swarm::core::kProtocolIdAntHocNet (constexpr): const std::uint8_t = 0x01
+core var swarm::core::kProtocolIdAra (constexpr): const std::uint8_t = 0x02
+core var swarm::core::kProtocolIdBeeAdHoc (constexpr): const std::uint8_t = 0x03
+core var swarm::core::kProtocolIdExperimentalFirst (constexpr): const std::uint8_t = 0xF0
+core var swarm::core::kProtocolIdExperimentalLast (constexpr): const std::uint8_t = 0xFE
+core var swarm::core::kProtocolIdHopnet (constexpr): const std::uint8_t = 0x05
+core var swarm::core::kProtocolIdInvalid (constexpr): const std::uint8_t = 0x00
+core var swarm::core::kProtocolIdReserved (constexpr): const std::uint8_t = 0xFF
+core var swarm::core::kProtocolIdTermite (constexpr): const std::uint8_t = 0x04
 core var swarm::core::kRouteActionCount (constexpr): const std::size_t = static_cast<std::size_t>(RouteAction::DiscardPending) + 1
 core var swarm::core::testbench::EventQueue::kDefaultMaxPending (public constexpr static): const std::size_t = std::size_t{1} << 20
 core var swarm::core::testbench::Rng::kChannelStream (public constexpr static): const std::uint64_t = ~0ull
