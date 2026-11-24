@@ -5,7 +5,7 @@
 | --- | --- |
 | Build | [![Built on: ns3-dev](https://img.shields.io/badge/built%20on-ns3--dev%20image-blue?logo=docker)](https://github.com/orgs/swarm-routing/packages/container/package/ns3-dev) |
 | Quality | [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=swarm-routing_swarm-core&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=swarm-routing_swarm-core) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=swarm-routing_swarm-core&metric=bugs)](https://sonarcloud.io/summary/new_code?id=swarm-routing_swarm-core) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=swarm-routing_swarm-core&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=swarm-routing_swarm-core) [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=swarm-routing_swarm-core&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=swarm-routing_swarm-core) [![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/swarm-routing/swarm-core?utm_source=oss&utm_medium=github&utm_campaign=swarm-routing%2Fswarm-core&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai) |
-| Release | [![Release](https://img.shields.io/github/v/release/swarm-routing/swarm-core?sort=semver&cacheSeconds=1800)](https://github.com/swarm-routing/swarm-core/releases) [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff) [![vcpkg: swarm-core](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fswarm-routing%2Fvcpkg-registry%2Fmain%2Fports%2Fswarm-core%2Fvcpkg.json&query=%24%5B%22version-semver%22%5D&label=vcpkg%20swarm-core)](https://github.com/swarm-routing/vcpkg-registry/tree/main/ports/swarm-core) [![Licence: MIT OR GPL-2.0-only](https://img.shields.io/badge/licence-MIT%20OR%20GPL--2.0--only-blue)](LICENSING.md) |
+| Release | [![Release](https://img.shields.io/github/v/release/swarm-routing/swarm-core?sort=semver&cacheSeconds=1800)](https://github.com/swarm-routing/swarm-core/releases) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24476619.svg)](https://doi.org/10.5281/zenodo.24476619) [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff) [![vcpkg: swarm-core](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fswarm-routing%2Fvcpkg-registry%2Fmain%2Fports%2Fswarm-core%2Fvcpkg.json&query=%24%5B%22version-semver%22%5D&label=vcpkg%20swarm-core)](https://github.com/swarm-routing/vcpkg-registry/tree/main/ports/swarm-core) [![Licence: MIT OR GPL-2.0-only](https://img.shields.io/badge/licence-MIT%20OR%20GPL--2.0--only-blue)](LICENSING.md) |
 | Trust | [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/swarm-routing/swarm-core/badge)](https://scorecard.dev/viewer/?uri=github.com/swarm-routing/swarm-core) |
 | Stack | [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue?logo=cplusplus)](AGENTS.md) |
 | Community & docs | [![Open RCAPA](https://img.shields.io/github/issues/swarm-routing/swarm-core/rcapa?label=open%20RCAPA&color=blue)](https://github.com/swarm-routing/swarm-core/blob/main/docs/rcapa/README.md) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org) |
@@ -32,9 +32,15 @@ and preventive actions), and how: [docs/rcapa/README.md](docs/rcapa/README.md).
 
 Versions follow [SemVer](https://semver.org) ([CHANGELOG.md](CHANGELOG.md)). Each release is listed under [Releases](https://github.com/swarm-routing/swarm-core/releases), built by the org's release workflow and archived on [Zenodo](https://zenodo.org) with its own DOI.
 
-To cite this repository, use the “Cite this repository” button (from [CITATION.cff](CITATION.cff)). It has no DOI yet: the concept DOI appears here and in the badge above once Zenodo archives its first release.
+To cite this repository, use the “Cite this repository” button (from [CITATION.cff](CITATION.cff)):
 
-Using it in your work? Contributions are welcome, and citing it helps just as much.
+| DOI | resolves to |
+|---|---|
+| [`10.5281/zenodo.24476619`](https://doi.org/10.5281/zenodo.24476619) | **concept DOI**: always the latest release. This is the badge above, and the right citation when you mean this project. |
+
+Each release also has its own **version DOI**, listed on [its Zenodo record](https://doi.org/10.5281/zenodo.24476619): cite that one when you reproduce a number measured at that release.
+
+Using it in your work? Contributions are welcome, and citing the DOI helps just as much.
 <!-- org-sync:end citing -->
 
 ## Epics

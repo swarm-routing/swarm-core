@@ -23,3 +23,8 @@ license:
   - GPL-2.0-only
 repository-code: "https://github.com/swarm-routing/swarm-core"
 url: "https://github.com/swarm-routing/swarm-core"
+doi: "10.5281/zenodo.24476619"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24476619"
+    description: "Concept DOI: always resolves to the latest released version."

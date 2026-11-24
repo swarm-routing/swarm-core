@@ -1,5 +1,7 @@
 # org-sync configuration (swarm-routing/.github tools/org-sync).
 kind = "c-cpp"
+# the Zenodo concept record, read from Zenodo by swarm-routing/.github tools/zenodo/zenodo.py record (#232)
+zenodo_concept = "24476619"
 title = "swarm-core"
 dual = [""]
 # its port in swarm-routing/vcpkg-registry: the README's vcpkg badge (swarm-routing/.github#436);
