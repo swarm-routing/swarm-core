@@ -40,6 +40,10 @@ To cite this repository, use the “Cite this repository” button (from [CITATI
 
 Each release also has its own **version DOI**, listed on [its Zenodo record](https://doi.org/10.5281/zenodo.24476619): cite that one when you reproduce a number measured at that release.
 
+Works that build on it:
+
+- D. H. Joppi, *swarm-adapter-ns3: the ns-3 adapter of swarm-core*, 2026, [doi:10.5281/zenodo.24138628](https://doi.org/10.5281/zenodo.24138628). The ns-3 adapter of these ports (swarm-routing/swarm-adapter-ns3): the ns-3 contrib module every protocol links, built on swarm-core's release.
+
 Using it in your work? Contributions are welcome, and citing the DOI helps just as much.
 <!-- org-sync:end citing -->
 
