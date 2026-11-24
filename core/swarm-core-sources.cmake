@@ -14,6 +14,7 @@ set(SWARM_CORE_SOURCES
 set(SWARM_CORE_HEADERS
   swarm-dedup-history.h
   swarm-energy-metric.h
+  swarm-envelope.h
   swarm-fuzzy-metric.h
   swarm-link-metric.h
   swarm-observer.h
@@ -36,6 +37,7 @@ set(SWARM_CORE_TESTBENCH_HEADERS
 # main); the ns-3 module wraps the same functions in its test suite.
 set(SWARM_CORE_TEST_SOURCES
   test/all-tests.cc
+  test/test-envelope.cc
   test/test-metrics.cc
   test/test-fuzzy-metric.cc
   test/test-observer.cc
