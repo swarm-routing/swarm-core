@@ -42,9 +42,9 @@ public:
     void start() override {
         housekeeping();
         if (p_.address() != 0) return;
-        const NodeAddress last = 5;  // the far end of the suite's 6-node line
         for (std::uint32_t s = 1; s <= 3; ++s) {
-            p_.schedule(0.5 * s, [this, last, s]() { originate(last, s); });
+            // To node 5, the far end of the suite's 6-node line.
+            p_.schedule(0.5 * s, [this, s]() { originate(5, s); });
         }
     }
 
