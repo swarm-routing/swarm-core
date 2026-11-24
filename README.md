@@ -42,6 +42,9 @@ int main() {
         return std::make_unique<MyAdapter>(p, prov);  // hand prov's ports to the core
     };
     spec.script = [](tb::Network<MyMsg>& net) { /* traffic, link changes */ };
+    // Recommended: the trace digest sees times, endpoints and kinds; this
+    // adds the contents of every message received to the comparisons.
+    spec.payloadHash = [](const MyMsg& m) { return fnv1a(encode(m)); };
     // Only if MyMsg carries a hop limit; leave unset to skip that check.
     spec.hopLimited = [](swarm::core::NodeAddress origin, swarm::core::NodeAddress dest,
                          int hopLimit) { return MyMsg::data(origin, dest, hopLimit); };

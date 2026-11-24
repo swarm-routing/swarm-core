@@ -29,7 +29,7 @@ struct FloodMsg {
 };
 
 /// How a toy node breaks the contract, for the negative tests.
-enum class Flaw { None, SharedState, ForwardsSpent, PricesNaN };
+enum class Flaw { None, SharedState, SharedPayload, ForwardsZeroHop, ForwardsSelfLoop, PricesNaN };
 
 /// The flaw of shared-state nodes leaks between runs, like a static in a core.
 std::uint32_t gSharedCounter = 0;
@@ -40,6 +40,7 @@ public:
         : p_(p), prov_(prov), flaw_(flaw) {}
 
     void start() override {
+        housekeeping();
         if (p_.address() != 0) return;
         const NodeAddress last = 5;  // the far end of the suite's 6-node line
         for (std::uint32_t s = 1; s <= 3; ++s) {
@@ -49,9 +50,8 @@ public:
 
     void receive(NodeAddress from, const FloodMsg& m) override {
         if (prov_.observer != nullptr) prov_.observer->onControlReceived(1, 16);
-        if (flaw_ != Flaw::ForwardsSpent) {
-            if (m.hopLimit <= 0 || m.origin == p_.address()) return;
-        }
+        if (flaw_ != Flaw::ForwardsZeroHop && m.hopLimit <= 0) return;
+        if (flaw_ != Flaw::ForwardsSelfLoop && m.origin == p_.address()) return;
         if (!seen_.record(m.origin, m.seq)) return;
         if (m.dest == p_.address()) return;
         // A sample-less port is no evidence: NaN reads as "keep going".
@@ -72,9 +72,16 @@ public:
     }
 
 private:
+    /// A periodic timer that never sends: a run always ends with one due
+    /// after the duration, which the event budget must not count.
+    void housekeeping() {
+        p_.schedule(1.0, [this]() { housekeeping(); });
+    }
     void originate(NodeAddress dest, std::uint32_t s) {
-        const std::uint32_t seq = flaw_ == Flaw::SharedState ? ++gSharedCounter : s;
-        // The shared counter shows on the air through the hop limit.
+        const bool shared = flaw_ == Flaw::SharedState || flaw_ == Flaw::SharedPayload;
+        const std::uint32_t seq = shared ? ++gSharedCounter : s;
+        // SharedState shows on the air through the hop limit; SharedPayload
+        // only in the contents (the sequence number).
         const int hops = flaw_ == Flaw::SharedState ? 2 + static_cast<int>((seq - 1) / 3) : 8;
         FloodMsg m{p_.address(), dest, seq, hops};
         seen_.record(m.origin, m.seq);
@@ -101,7 +108,23 @@ tb::ContractSpec<FloodMsg> spec(Flaw flaw) {
     s.hopLimited = [](NodeAddress origin, NodeAddress dest, int hopLimit) {
         return FloodMsg{origin, dest, 0xC0DE, hopLimit};
     };
+    s.payloadHash = [](const FloodMsg& m) {
+        return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(m.origin)) << 48) ^
+               (static_cast<std::uint64_t>(static_cast<std::uint32_t>(m.dest)) << 32) ^
+               (static_cast<std::uint64_t>(m.seq) << 8) ^
+               static_cast<std::uint64_t>(static_cast<std::uint32_t>(m.hopLimit));
+    };
     return s;
+}
+
+/// How many events a run of `s` executes within its duration.
+std::uint64_t eventsRun(const tb::ContractSpec<FloodMsg>& s) {
+    tb::NetworkConfig config = s.config;
+    config.seed = s.seed;
+    tb::Network<FloodMsg> net(s.topology, config);
+    const tb::ContractProviders none{};
+    net.install([&s, &none](tb::NodePorts<FloodMsg>& p) { return s.factory(p, none); });
+    return net.run(s.duration);
 }
 
 }  // namespace
@@ -122,8 +145,28 @@ void TestContractCatchesBrokenCores(Checker& c) {
     gSharedCounter = 0;
     c.check(!tb::checkDeterministicExecution(spec(Flaw::SharedState)).ok(),
             "state shared between runs fails DeterministicExecution");
-    c.check(!tb::checkZeroTtlAndSelfLoopPacketsAreDropped(spec(Flaw::ForwardsSpent)).ok(),
-            "forwarding a spent or looped message fails ZeroTtlAndSelfLoopPacketsAreDropped");
+    gSharedCounter = 0;
+    c.check(!tb::checkDeterministicExecution(spec(Flaw::SharedPayload)).ok(),
+            "contents that differ between runs fail DeterministicExecution (payloadHash)");
+    auto blind = spec(Flaw::SharedPayload);
+    blind.payloadHash = {};
+    gSharedCounter = 0;
+    c.check(tb::checkDeterministicExecution(blind).ok(),
+            "without payloadHash only the air is compared (why it is recommended)");
+    // Each drop rule on its own: the variant breaking one rule fails that
+    // rule's comparison and only it.
+    auto mentions = [](const tb::ContractResult& r, const std::string& what) {
+        for (const auto& f : r.failures)
+            if (f.find(what) != std::string::npos) return true;
+        return false;
+    };
+    const auto zeroHop = tb::checkZeroTtlAndSelfLoopPacketsAreDropped(spec(Flaw::ForwardsZeroHop));
+    c.check(mentions(zeroHop, "hop limit 0") && !mentions(zeroHop, "back at its origin"),
+            "forwarding a zero-hop message fails the zero-hop comparison alone");
+    const auto selfLoop =
+        tb::checkZeroTtlAndSelfLoopPacketsAreDropped(spec(Flaw::ForwardsSelfLoop));
+    c.check(mentions(selfLoop, "back at its origin") && !mentions(selfLoop, "hop limit 0"),
+            "forwarding a message back at its origin fails the self-loop comparison alone");
     c.check(!tb::checkNullAndUnavailableProvidersAreSafe(spec(Flaw::PricesNaN)).ok(),
             "reading NaN as a bad link fails NullAndUnavailableProvidersAreSafe");
 
@@ -144,6 +187,17 @@ void TestContractCatchesBrokenCores(Checker& c) {
     c.check(!tb::checkDeterministicExecution(silent).ok(), "a silent scene proves nothing: fails");
     c.check(!tb::checkZeroTtlAndSelfLoopPacketsAreDropped(silent).ok(),
             "an adapter that ignores what it is handed fails the control case");
+
+    // The budget counts events due within the duration only: exactly enough
+    // passes although the housekeeping timer stays queued; one fewer fails.
+    auto exact = spec(Flaw::None);
+    exact.maxEvents = eventsRun(exact);
+    c.check(exact.maxEvents > 0, "the toy runs events");
+    c.check(tb::checkDeterministicExecution(exact).ok(),
+            "a budget of exactly the events run passes");
+    auto tight = exact;
+    tight.maxEvents = exact.maxEvents - 1;
+    c.check(!tb::checkDeterministicExecution(tight).ok(), "one event short of the budget fails");
 
     tb::ContractSpec<FloodMsg> unset;
     c.check(!tb::checkDeterministicExecution(unset).ok(), "no factory: fails, no crash");

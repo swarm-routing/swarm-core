@@ -104,6 +104,7 @@ core field swarm::core::testbench::ContractSpec::kindOf (public): typename Netwo
 core field swarm::core::testbench::ContractSpec::liveHopLimit (public): int = 8
 core field swarm::core::testbench::ContractSpec::maxEvents (public): std::uint64_t = 1'000'000
 core field swarm::core::testbench::ContractSpec::otherSeed (public): std::uint64_t = 2
+core field swarm::core::testbench::ContractSpec::payloadHash (public): std::function<std::uint64_t (const Msg &)> = {}
 core field swarm::core::testbench::ContractSpec::script (public): Script = {}
 core field swarm::core::testbench::ContractSpec::seed (public): std::uint64_t = 1
 core field swarm::core::testbench::ContractSpec::seedChangesTrace (public): bool = true

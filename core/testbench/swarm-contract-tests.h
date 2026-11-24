@@ -6,7 +6,9 @@
 // only the INodeAdapter<Msg> it already writes for its testbench tests.
 //
 //   DeterministicExecution              two runs with one seed give the same
-//                                       trace and digest; another seed gives
+//                                       trace and digest (and message
+//                                       contents, with ContractSpec::
+//                                       payloadHash); another seed gives
 //                                       another digest (org rule 5).
 //   NullAndUnavailableProvidersAreSafe  the core runs with every optional port
 //                                       null, and with every port present but
@@ -99,6 +101,14 @@ template <typename Msg> struct ContractSpec {
     /// False for a core that draws no randomness that reaches the air: then
     /// DeterministicExecution does not ask another seed to differ.
     bool seedChangesTrace = true;
+    /// A hash of a message's contents (of its encoded bytes, say). The
+    /// network's digest sees times, endpoints and kinds only; set, every
+    /// message an adapter receives also joins a contents digest, which
+    /// DeterministicExecution and NullAndUnavailableProvidersAreSafe compare
+    /// too, so contents that differ between runs fail. Recommended. With it
+    /// each adapter is wrapped, so a script reaches nodes through the network
+    /// (ports, at, linkAt), not Network::nodeAs.
+    std::function<std::uint64_t(const Msg&)> payloadHash{};
 
     /// Set only when the protocol's messages carry a hop limit; unset, the
     /// ZeroTtlAndSelfLoopPacketsAreDropped check is skipped.
@@ -120,9 +130,38 @@ struct ContractResult {
 namespace detail {
 
 struct RunOutcome {
-    std::uint64_t digest = 0;  ///< Network::digest, over every trace record
+    std::uint64_t digest = 0;    ///< Network::digest, over every trace record
+    std::uint64_t contents = 0;  ///< over ContractSpec::payloadHash of every message received
     std::uint64_t sent = 0;
     std::vector<std::string> failures;
+};
+
+/// Wraps an adapter to fold the hash of every message it receives into
+/// `contents` (FNV-1a over the hash's bytes, in delivery order).
+template <typename Msg> class ContentsTap : public INodeAdapter<Msg> {
+public:
+    ContentsTap(std::unique_ptr<INodeAdapter<Msg>> inner,
+                const std::function<std::uint64_t(const Msg&)>& hash, std::uint64_t& contents)
+        : inner_(std::move(inner)), hash_(hash), contents_(contents) {}
+    void start() override { inner_->start(); }
+    void receive(NodeAddress from, const Msg& msg) override {
+        mix(static_cast<std::uint64_t>(static_cast<std::uint32_t>(from)));
+        mix(hash_(msg));
+        inner_->receive(from, msg);
+    }
+    void undelivered(NodeAddress to, const Msg& msg) override { inner_->undelivered(to, msg); }
+    void linkChanged(NodeAddress neighbor, bool up) override { inner_->linkChanged(neighbor, up); }
+
+private:
+    void mix(std::uint64_t v) {
+        for (int i = 0; i < 8; ++i) {
+            contents_ ^= (v >> (8 * i)) & 0xFFu;
+            contents_ *= 0x100000001B3ull;
+        }
+    }
+    std::unique_ptr<INodeAdapter<Msg>> inner_;
+    const std::function<std::uint64_t(const Msg&)>& hash_;
+    std::uint64_t& contents_;
 };
 
 template <typename Msg>
@@ -137,12 +176,23 @@ RunOutcome runOnce(const ContractSpec<Msg>& spec, std::uint64_t seed,
     NetworkConfig config = spec.config;
     config.seed = seed;
     Network<Msg> net(spec.topology, config, spec.kindOf);
+    out.contents = 0xCBF29CE484222325ull;
     try {
-        net.install([&spec, &providers](NodePorts<Msg>& p) { return spec.factory(p, providers); });
+        net.install(
+            [&spec, &providers, &out](NodePorts<Msg>& p) -> std::unique_ptr<INodeAdapter<Msg>> {
+                auto node = spec.factory(p, providers);
+                if (!spec.payloadHash) return node;
+                return std::make_unique<ContentsTap<Msg>>(std::move(node), spec.payloadHash,
+                                                          out.contents);
+            });
         if (spec.script) spec.script(net);
         if (probe) probe(net);
-        const std::uint64_t ran = net.run(spec.duration, spec.maxEvents);
-        if (ran == spec.maxEvents && net.events().pending() != 0) {
+        // One event past the budget tells "needed more" from "used exactly
+        // the budget"; events due after the duration never count.
+        constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+        const std::uint64_t ran =
+            net.run(spec.duration, spec.maxEvents == kMax ? kMax : spec.maxEvents + 1);
+        if (ran > spec.maxEvents) {
             out.failures.push_back("seed " + std::to_string(seed) + ": the run needed more than " +
                                    std::to_string(spec.maxEvents) + " events");
         }
@@ -183,6 +233,9 @@ template <typename Msg> ContractResult checkDeterministicExecution(const Contrac
         r.failures.push_back("seed " + std::to_string(spec.seed) +
                              " twice gave two traces (state shared between runs, a wall "
                              "clock, or an unordered container)");
+    } else if (a.contents != b.contents) {
+        r.failures.push_back("seed " + std::to_string(spec.seed) +
+                             " twice gave one trace but other message contents (payloadHash)");
     }
     if (spec.seedChangesTrace) {
         const detail::RunOutcome c = detail::runOnce(spec, spec.otherSeed, none);
@@ -235,6 +288,9 @@ ContractResult checkNullAndUnavailableProvidersAreSafe(const ContractSpec<Msg>& 
     if (nul.digest != un.digest) {
         r.failures.emplace_back("null and unavailable providers gave two traces: a port without "
                                 "a sample changed a decision");
+    } else if (nul.contents != un.contents) {
+        r.failures.emplace_back("null and unavailable providers gave one trace but other message "
+                                "contents (payloadHash)");
     }
     return r;
 }
