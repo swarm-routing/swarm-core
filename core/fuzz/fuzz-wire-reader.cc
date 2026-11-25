@@ -44,7 +44,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     std::vector<std::uint8_t> echo;
     swarm::core::WireWriter w(echo);
 
-    for (const std::uint8_t op : ops) {
+    for (std::size_t i = 0; i < ops.size(); ++i) {
+        const std::uint8_t op = ops[i];
         const bool wasOk = r.ok();
         const std::size_t before = r.remaining();
         const auto arg = static_cast<std::uint8_t>(op >> 4);
@@ -93,10 +94,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
             break;
         }
         case 9: {
-            // The bound and the element size from the argument: a bound of 0
-            // to 15 elements of 0 to 3 bytes each (0: a count of nothing).
+            // The bound from the argument (0 to 15 elements) and the element
+            // size from the op's position (0 to 3 bytes; 0: a count of
+            // nothing), so every bound meets every size.
             const std::uint16_t maxCount = arg;
-            const std::size_t elementSize = arg & 0x03u;
+            const std::size_t elementSize = i & 0x03u;
             const std::size_t n = r.count(maxCount, elementSize);
             got = n;
             if (r.ok()) {
