@@ -101,7 +101,7 @@ What is planned and in progress here: the issues labelled [`epic`](https://githu
 
 | Epic | Status | Sub-issues closed |
 |------|--------|-------------------|
-| [#3](https://github.com/swarm-routing/swarm-core/issues/3) Extract swarm-core (C++23 ports, the daemon's 4-byte wire envelope, ProtocolContractTest) & release v1.0.0 | In progress | 6 / 10 |
+| [#3](https://github.com/swarm-routing/swarm-core/issues/3) Extract swarm-core (C++23 ports, the daemon's 4-byte wire envelope, ProtocolContractTest) & release v1.0.0 | In progress | 7 / 12 |
 | [#62](https://github.com/swarm-routing/swarm-core/issues/62) swarm-core 3.0.0: the host contract, so a protocol core runs on any host | Planned | 0 / 5 |
 
 <!-- epics:end -->
