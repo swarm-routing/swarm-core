@@ -59,6 +59,12 @@ struct Envelope {
 /// Appends the envelope for `protocolId` (flags 0) and then `payload`,
 /// unchanged, to `w`, with at most one allocation. Writes nothing and returns
 /// false when `protocolId` is kProtocolIdInvalid.
+///
+/// Precondition: `payload` must not view into the vector `w` writes to (for
+/// example a readEnvelope() result over that same vector). The writer grows
+/// the vector before it copies the payload, so such a view dangles: undefined
+/// behaviour (a heap-use-after-free under ASan). To re-wrap a received frame,
+/// write into another vector.
 inline bool writeEnvelope(WireWriter& w, std::uint8_t protocolId,
                           std::span<const std::uint8_t> payload) {
     if (protocolId == kProtocolIdInvalid) return false;
