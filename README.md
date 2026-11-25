@@ -11,9 +11,9 @@
 | Community & docs | [![Colony Arena: swarm-core](https://img.shields.io/badge/Colony%20Arena-project%20page-orange)](https://swarm-routing.github.io/projects/swarm-core/) [![Open RCAPA](https://img.shields.io/github/issues/swarm-routing/swarm-core/rcapa?label=open%20RCAPA&color=blue)](https://github.com/swarm-routing/swarm-core/blob/main/docs/rcapa/README.md) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org) |
 <!-- org-sync:end badges -->
 
-swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): the pure C++23 ports (`IClock`, `ITransport`, `IRouteTable`, `IEnergyProvider`, `ILocationProvider`, `ILinkMetrics`), the 4-byte wire envelope swarm-routingd puts around each protocol message on its socket (`core/swarm-envelope.h`: `envelope_version`, `magic`, `protocol_id`, `flags`; the ids in [`docs/protocol-ids.md`](docs/protocol-ids.md); never in ns-3, [ADR-0006](https://github.com/swarm-routing/.github/blob/main/docs/adr/0006-one-wire-format-rule-and-a-daemon-only-envelope.md), #52) and the header-only `ProtocolContractTest` suite. No OS or simulator header. It will be extracted with its history from swarm-routing/swarm-adapter-ns3's `core/`.
+swarm-core, layer 1 of the org's hexagonal layout (swarm-routing/.github#672): the pure C++23 ports (`core/swarm-ports.h`: `IClock`, `IRng`, `INeighborProvider`, `ITimerScheduler`, `ILinkState`, `ILinkQuality`, `IEnergy`, `IEnergyProvider` with `EnergySnapshot` and `PowerSource`; `core/swarm-link-metric.h`: `ILinkMetric`; the experimental `ILocationProvider`, `core/swarm-location.h`), the little-endian wire helpers (`core/swarm-wire.h`: `WireReader`, `WireWriter`), the 4-byte wire envelope swarm-routingd puts around each protocol message on its socket (`core/swarm-envelope.h`: `envelope_version`, `magic`, `protocol_id`, `flags`; the ids in [`docs/protocol-ids.md`](docs/protocol-ids.md); never in ns-3, [ADR-0006](https://github.com/swarm-routing/.github/blob/main/docs/adr/0006-one-wire-format-rule-and-a-daemon-only-envelope.md), #52) and the header-only protocol contract suite (`core/testbench/swarm-contract-tests.h`: `runProtocolContract`, `ContractSpec`, `ContractResult`). No OS or simulator header. It was extracted with its history from swarm-routing/swarm-adapter-ns3's `core/` (#6).
 
-**Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release pending (#10).** The plan is #3 and swarm-routing/.github#672. `core/` builds, tests and installs alone: `cmake -S core -B build/core && cmake --build build/core && ctest --test-dir build/core` (`make test`); consumers add it with `FetchContent` `SOURCE_SUBDIR core` or `find_package(swarm-core CONFIG)` (target `swarm::core`).
+**Status: `core/` extracted from swarm-routing/swarm-adapter-ns3 with its history (#6); first release `v2.0.0` shipped 2026-11-23 (#10). Next major, v3.0.0: the host contract (#62).** The plan is #3 and swarm-routing/.github#672. `core/` builds, tests and installs alone: `cmake -S core -B build/core && cmake --build build/core && ctest --test-dir build/core` (`make test`); consumers add it with `FetchContent` `SOURCE_SUBDIR core` or `find_package(swarm-core CONFIG)` (target `swarm::core`).
 
 ## Protocol contract suite: how a protocol opts in
 
@@ -54,9 +54,9 @@ int main() {
 
 The scene must put traffic on the air, or the checks fail as proving
 nothing. Each check is also callable alone (`checkDeterministicExecution`, ...)
-and returns its failures. A port added to swarm-core later (the energy and
-location providers of #7) becomes one more `ContractProviders` pointer, null
-by default, so an adapter written today keeps compiling.
+and returns its failures. A port added to `ContractProviders` later (`IEnergyProvider` or
+`ILocationProvider`, #7) becomes one more pointer there, null by default, so
+an adapter written today keeps compiling.
 `core/test/test-contract.cc` is the reference: a toy hop-limited flood that
 passes, and broken variants each check catches.
 
