@@ -48,7 +48,7 @@ jobs:
         with:
           egress-policy: audit
       # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
-      - uses: swarm-routing/.github/.github/actions/changes@bbb81f90c92b52dcb3ef0cfcdfdd655bef968391 # main@2026-11-27
+      - uses: swarm-routing/.github/.github/actions/changes@3a6638192e29fce4418eb76a6187d5c5537891a3 # main@2026-11-27
         id: changes
         timeout-minutes: 2
         with:
@@ -98,7 +98,7 @@ jobs:
         with:
           egress-policy: audit
       # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
-      - uses: swarm-routing/.github/.github/actions/changes@bbb81f90c92b52dcb3ef0cfcdfdd655bef968391 # main@2026-11-27
+      - uses: swarm-routing/.github/.github/actions/changes@3a6638192e29fce4418eb76a6187d5c5537891a3 # main@2026-11-27
         id: changes
         timeout-minutes: 2
         with:
@@ -164,7 +164,7 @@ jobs:
         with:
           egress-policy: audit
       # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
-      - uses: swarm-routing/.github/.github/actions/changes@bbb81f90c92b52dcb3ef0cfcdfdd655bef968391 # main@2026-11-27
+      - uses: swarm-routing/.github/.github/actions/changes@3a6638192e29fce4418eb76a6187d5c5537891a3 # main@2026-11-27
         id: changes
         timeout-minutes: 2
         with:
@@ -229,7 +229,7 @@ jobs:
     continue-on-error: true
     steps:
       # a docs-only change skips the steps below (swarm-routing/.github#581)
-      - uses: swarm-routing/.github/.github/actions/changes@bbb81f90c92b52dcb3ef0cfcdfdd655bef968391 # main@2026-11-27
+      - uses: swarm-routing/.github/.github/actions/changes@3a6638192e29fce4418eb76a6187d5c5537891a3 # main@2026-11-27
         id: changes
         timeout-minutes: 2
         with:
@@ -262,7 +262,7 @@ jobs:
         with:
           egress-policy: audit
       # a docs-only change skips the steps below; the check still reports (swarm-routing/.github#581)
-      - uses: swarm-routing/.github/.github/actions/changes@bbb81f90c92b52dcb3ef0cfcdfdd655bef968391 # main@2026-11-27
+      - uses: swarm-routing/.github/.github/actions/changes@3a6638192e29fce4418eb76a6187d5c5537891a3 # main@2026-11-27
         id: changes
         timeout-minutes: 2
         with:
